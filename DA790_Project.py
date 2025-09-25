@@ -93,7 +93,7 @@ def setup_driver():
 
 '''
 * function_identifier: api_check
-* summary: Check if the base_url has an API that is available (status==200) and conveniant (contentType==application/json)
+* summary: Check if the base_url has an API that is available (status==200) and conveniant (contentType==application/json). Json is a strcutured easily parasbale format.
 '''
 def api_check(base_url):
     try:
@@ -483,4 +483,5 @@ def main():
 # ==========================================================================================
 
 if __name__ == "__main__":
+
     main()
