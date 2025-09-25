@@ -17,7 +17,7 @@ Notes:
 Questions:
 - Would you like us to store every weeks version of our code file in the github repository, or can we overwrite a previous version?
 - Is publisher the sponsor?
-- What makes an api convienant? For available I have it checking to see if a status of 200 is returned.
+- What makes an api convienant? For available I have it checking to see if a status of 200 is returned and contentType==application/json.
 
 Problems:
 - FIXED: alzheon_inc_url just keeps loading main page in get_all_pages. Need something that analyzes if the names of links being recorded are already in all_links. If so, quit.
@@ -485,3 +485,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
