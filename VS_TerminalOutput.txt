@@ -1,79 +1,55 @@
 Setting up driver....
 Installing ChromeDriver...
 
-DevTools listening on ws://127.0.0.1:63239/devtools/browser/d0a2d482-6b96-40ab-be3b-c9e73ab41a68
+DevTools listening on ws://127.0.0.1:63786/devtools/browser/b06db967-2457-4d28-b72f-bc3c539901f0
 Driver setup complete!
 
 -------------------------------------------------------------------------------------------------------------
-Searching  https://www.alzinova.com/investors/press-releases/ for article links.
-No usable API found for https://www.alzinova.com/investors/press-releases/
 Checking https://www.alzinova.com/investors/press-releases/ for links.
-No usable API found for https://www.alzinova.com/investors/press-releases/
-Found 37 links on https://www.alzinova.com/investors/press-releases/
+Container not found. Scraping whole page.
+Found 37 links overall on https://www.alzinova.com/investors/press-releases/ when using Beautiful Soup.
+Grabbing links from: https://www.alzinova.com/investors/press-releases/?page=1
+Container not found. Scraping whole page.
+Found 37 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Beautiful Soup.
+No new links found on page 1
 Grabbing links from: https://www.alzinova.com/investors/press-releases/?page=2
-No usable API found for https://www.alzinova.com/investors/press-releases/?page=2
-No new links found. Stopping page search.
+Container not found. Scraping whole page.
+Found 37 links overall on https://www.alzinova.com/investors/press-releases/?page=2 when using Beautiful Soup.
+No new links found on page 2
+Numeric pagination produced no new links. Switching to button navigation.
 
-Total number of links found on https://www.alzinova.com/investors/press-releases/ : 37
+Trying button navigation for https://www.alzinova.com/investors/press-releases/ ...       
+Searching home page...
+Found 10 links overall on https://www.alzinova.com/investors/press-releases/ when using Selenium.
+Number of new links found: 10
+Checking for a button on: https://www.alzinova.com/investors/press-releases/
+Button found...
+Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Selenium.
+Number of new links found: 10
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=1       
+Button found...
+Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=2 when using Selenium.
+Number of new links found: 10
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=2       
+Button found...
+Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=3 when using Selenium.
+Number of new links found: 10
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=3       
+Button found...
+Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=4 when using Selenium.
+Number of new links found: 10
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=4       
+Button found...
+Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=5 when using Selenium.
+Number of new links found: 10
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=5       
+Button found...
+
+Total number of links found on https://www.alzinova.com/investors/press-releases/ : 60
 Checking articles for Alzheimer's related content...
-Links with Alzheimer content found using BeautifulSoup: 36
-Links with Alzheimer content found using Selenium: 1
-
-Total number of Alzheimer's related links:  37
-
--------------------------------------------------------------------------------------------------------------
-Searching  https://asceneuron.com/news-events/ for article links.       
-No usable API found for https://asceneuron.com/news-events/
-Checking https://asceneuron.com/news-events/ for links.
-No usable API found for https://asceneuron.com/news-events/
-Found 24 links on https://asceneuron.com/news-events/
-Grabbing links from: https://asceneuron.com/news-events/?page=2
-No usable API found for https://asceneuron.com/news-events/?page=2
-No new links found. Stopping page search.
-
-Total number of links found on https://asceneuron.com/news-events/ : 24 
-Checking articles for Alzheimer's related content...
-Links with Alzheimer content found using BeautifulSoup: 17
+Links with Alzheimer content found using BeautifulSoup: 60
 Links with Alzheimer content found using Selenium: 0
 
-Total number of Alzheimer's related links:  17
-
--------------------------------------------------------------------------------------------------------------
-Searching  https://www.bnhresearch.net/press for article links.
-No usable API found for https://www.bnhresearch.net/press
-Checking https://www.bnhresearch.net/press for links.
-No usable API found for https://www.bnhresearch.net/press
-Found 20 links on https://www.bnhresearch.net/press
-Grabbing links from: https://www.bnhresearch.net/press?page=2
-No usable API found for https://www.bnhresearch.net/press?page=2
-No new links found. Stopping page search.
-
-Total number of links found on https://www.bnhresearch.net/press : 20   
-Checking articles for Alzheimer's related content...
-Links with Alzheimer content found using BeautifulSoup: 6
-Links with Alzheimer content found using Selenium: 0
-
-Total number of Alzheimer's related links:  6
-Failed to extract the alzheimer article details from: https://www.bnhresearch.net
-Failed to extract the alzheimer article details from: https://www.bnhresearch.net/pipeline
-Failed to extract the alzheimer article details from: https://www.bnhresearch.net/publication-1
-Failed to extract the alzheimer article details from: https://www.bnhresearch.net/복제-복제-pipeline
-Failed to extract the alzheimer article details from: https://www.bnhresearch.net/복제-research-service
-
--------------------------------------------------------------------------------------------------------------
-Searching  https://synapse.patsnap.com/news for article links.
-No usable API found for https://synapse.patsnap.com/news
-Checking https://synapse.patsnap.com/news for links.
-No usable API found for https://synapse.patsnap.com/news
-Found 30 links on https://synapse.patsnap.com/news
-Grabbing links from: https://synapse.patsnap.com/news?page=2
-No usable API found for https://synapse.patsnap.com/news?page=2
-No new links found. Stopping page search.
-
-Total number of links found on https://synapse.patsnap.com/news : 30
-Checking articles for Alzheimer's related content...
-Links with Alzheimer content found using BeautifulSoup: 0
-Links with Alzheimer content found using Selenium: 0
-
-Total number of Alzheimer's related links:  0
+Total number of Alzheimer's related links:  60
 Saved results to alz_articles.xlsx
+PS C:\Users\letsc\OneDrive\Documents\UNLV\DA790> xlsx
