@@ -15,21 +15,19 @@ require it. Selenium will use the firfox driver.
 Notes:
 
 Questions:
-- 
-
+- Is it preferred that I output body to excel file or do a pdf?
+- For Alzheon Inc there are event, press realses, and news being pulled. Do we want all those?
+    - if just want one, can I change the link, or do I need to change code to only pull wanted articles?
+- For output like csv and terminal text, would you like me to upload a current version every week or overwrite old one?
+    
 Problems:
-- can only pull details from a site on alzinova if i have the page open in my browser
 - need to check api code, because every site returned an api is not available
-- Code is pulling all links from site page, want it to only pull links from a certain area on the site. That is why article_container has been added to site details
 - Code uses BS and if it finds nothing it then attempts Selenium, causes code to take FOREVER to run.
+- Alzheon site has multiple space separated classes. Was not one class like ADEL. Need to adjust body code.
+- Could delete author and etc code for ADEL since it does not have authors on article pages.
 
 Fixed Problems:
-- In get_all_pages base_url always returns full amount of links on site and not links only within designated article_container
-    - Just needed to clean all links if pagination fails and be patient and wait for selenium to run... whoops
-- Code was pulling external site links. Only wanted internal links that linked to site pages only. Coded filter_internal_links()
-
-Thoughts:
-- Do I need to add code that deals with a cookie requests if it appears?
+- 
 
 Links:
 - 
@@ -307,6 +305,7 @@ def filter_internal_links(links, base_url):
 def get_all_pages(site_name, site_info, driver):
     all_links = set() # stores unique links
     base_url = site_info["url"]
+    button_xpath = site_info.get("button_xpath") # if beautifulsoup fails, then selenium will look for a button
     container = site_info.get("article_container") # stores what element on a site I want to go through to find links. Do pull links from outside the element.
 
     # API Check first
@@ -357,7 +356,7 @@ def get_all_pages(site_name, site_info, driver):
                 print("No new links found on page", page)
                 tried_first_pages += 1
 
-                # If tried page=1 or 2 and got nothing, stop numeric pagination.
+                # If tried page=1 or 2 and got nothing, stop numeric pagination. Did 1 and 2 beacusse some websites start at page=2 and some start at page =1
                 if tried_first_pages >= 2:
                     print("Numeric pagination produced no new links. Switching to button navigation. \n")
                     all_links.clear() # wipe previously collected links, because we will need selenium to load the article_container in button navigation
@@ -377,7 +376,6 @@ def get_all_pages(site_name, site_info, driver):
                 
 
     # If going through pages fails, try finding a button and using it (Next, View More, Load More).
-    button_xpath = site_info.get("button_xpath")
     if not numeric_success and button_xpath:
         try:
             print("Trying button navigation for", base_url, "...")
@@ -389,6 +387,8 @@ def get_all_pages(site_name, site_info, driver):
             prev_count = 0
             click_count = 0 # track how many button clicks have been done
             last_url = driver.current_url
+            no_new_count = 0 # counts how many times no new articles were returned after a button click.
+            
             button_count = 0 # for testing, when I dont wanna run through a whole website. 
 
             while True: # loop until there are no more new links or buttons
@@ -421,10 +421,17 @@ def get_all_pages(site_name, site_info, driver):
                     last_url = driver.current_url
 
                     # if no new links after at least 2 clicks, stop
-                    if click_count >= 2 and len(all_links) == prev_count:
-                        print("No new links loaded after button click. Stopping button navigation.")
-                        break
+                    if len(all_links) == prev_count:
+                        no_new_count += 1
+                        print("No new links found.")
+                    else:
+                        no_new_count = 0
 
+                    if no_new_count >= 2: 
+                        print("No new links loaded after", no_new_count, "clicks. Stopping button navigation.\n")
+                        break
+                    
+                    prev_count = len(all_links)
 
                     '''
                     -------------------------------------------------------------------------------------
@@ -433,10 +440,9 @@ def get_all_pages(site_name, site_info, driver):
                     -------------------------------------------------------------------------------------
                     '''
                     button_count += 1
-                    if button_count > 5:
+                    if button_count > 3:
                         break
-                    
-                    
+                     
                 except TimeoutException:
                     print("No more Next/Load More buttons found. Stopping button navigation.")
                     break
@@ -464,7 +470,7 @@ def find_alz_articles(driver, links): #using beautiful soup first, then selenium
     print("Checking articles for Alzheimer's related content...")
 
     for link in links: 
-        found = False #for tracking if Alzheimer's keyword is found.
+        found = False # for tracking if Alzheimer's keyword is found.
 
         # First try beautifulsoup
         try:
@@ -508,32 +514,7 @@ def find_alz_articles(driver, links): #using beautiful soup first, then selenium
     return alz_article_links
 
 
-# ------------------------------------------------------------------------------------------------
-#                                  FUNCTIONS: ARTICLE DETAILS PULLER
-# ------------------------------------------------------------------------------------------------
 
-''' SHOULD I DELETE THIS?
-* function_identifier: generic_detail_puller
-* summary: Will extract article details like title, publish date, author, etc. and store them into a dictionary.
-* known problems:
-    - this is using selenium, selenium should be a backup.
-    - driver.title does not always pull the title. Need a better way to do this.
-    - need to write code for other details.
-'''
-def generic_detail_getter(driver, link):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "BODY": ""}
-    
-    try: # attempt to get the desired details from the link and store them in the dictionary named 'details' 
-        driver.get(link)
-        body_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
-        title_element = driver.find_element(By.TAG_NAME, "h1")
-        details["TITLE"] = title_element.text.strip() #strip() removes any extra whitespace before or after title
-        details["PUBLISH DATE"] = 0 #look for different formats yyyy-mm-dd, mm-dd-yyyy, jan-dd-yyyy, january-dd-yyyy, etc.
-
-    except Exception as e:
-        print("Failed to extract the alzheimer article details from:", link)
-
-    return details
 
 # ------------------------------------------------------------------------------------------------
 #                                 FUNCTIONS: SITE SPECEFIC DETAIL PULLER
@@ -541,8 +522,7 @@ def generic_detail_getter(driver, link):
 ''' COULD DELETE BEAUTIFUL SOUP PART BECAUSE IT RETURNED NOTHING, OR CREATE A BASIC FUNCTION YOU CAN PASS STORAGE LOCATIONS FOR TITLE AND ETC IN.
 * function_identifier: get_adel_details
 * parameters: this is designed to scrape the details from articles on https://www.alzinova.com/investors/press-releases/ that were found to have the keyword "alzheim."
-* known problems: 
-    - figure out how to pull author(s), publisher, and body
+* note: ADEL does not have publishers or authors on articles
 '''
 def get_adel_details(driver, link):
     details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "BODY": ""}
@@ -553,7 +533,7 @@ def get_adel_details(driver, link):
         soup = BeautifulSoup(r.text, "html.parser")
 
         # grabbing publisher
-        details["PUBLISHER"] = "Alzinova AB"
+        details["PUBLISHER"] = "Alzheimer's Disease Expert Lab (ADEL), Inc."
         
         # grabbing title
         title_element = soup.find("div", class_="mfn-title")
@@ -561,7 +541,7 @@ def get_adel_details(driver, link):
             details["TITLE"] = title_element.text.strip() #strip gives a clean output
         
         # grabbing publish date
-        date_element = soup.find("span", class_="published")
+        date_element = soup.find("span", class_="mfn-date")
         if date_element: # continues if date_element is not empty
             details["PUBLISH DATE"] = date_element.text.strip()
        
@@ -571,7 +551,7 @@ def get_adel_details(driver, link):
             details["AUTHOR(S)"] = author_element.text.strip()
 
         # grabbing body
-        body_container = soup.find("div", class_="entry-content")
+        body_container = soup.find("div", class_="mfn-body")
         if body_container:
             paragraphs = body_container.find_all("p")
             details["BODY"] = "\n".join([p.get_text(strip=True) for p in paragraphs])
@@ -602,7 +582,7 @@ def get_adel_details(driver, link):
             # grabbing publish date
             if not details["PUBLISH DATE"]: # continues if publish date is empty
                 try:
-                    date_element = driver.find_element(By.CLASS_NAME, "published")
+                    date_element = driver.find_element(By.CLASS_NAME, "mfn-date")
                     details["PUBLISH DATE"] = date_element.text.strip()
                 except:
                     details["PUBLISH DATE"] = "N/A"
@@ -618,7 +598,7 @@ def get_adel_details(driver, link):
             # grabbing body
             if not details["BODY"]:
                 try:
-                    body_container = driver.find_element(By.CLASS_NAME, "entry-content")
+                    body_container = driver.find_element(By.CLASS_NAME, "mfn-body")
                     paragraphs = body_container.find_elements(By.TAG_NAME, "p")
                     details["BODY"] = "\n".join([p.text.strip() for p in paragraphs])
                 except:
@@ -633,9 +613,92 @@ def get_adel_details(driver, link):
 '''
 * function_identifier: get_alzheon_details
 * parameters: this is designed to scrape the details from articles on https://asceneuron.com/news-events/ that were found to have the keyword "alzheim."
+* problems: site has multiple space separated classes. Was not one class like ADEL.
 '''
 def get_alzheon_details(driver, link):
-    pass
+    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "BODY": ""}
+    
+    # try using beautifulsoup first
+    try:
+        r = requests.get(link, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        # grabbing publisher
+        details["PUBLISHER"] = "Alzheon Inc."
+        
+        # grabbing title
+        title_element = soup.find("div", class_="entry-title")
+        if title_element: #continues if title_element is not empty
+            details["TITLE"] = title_element.text.strip() #strip gives a clean output
+        
+        # grabbing publish date
+        date_element = soup.find("span", class_="published")
+        if date_element: # continues if date_element is not empty
+            details["PUBLISH DATE"] = date_element.text.strip()
+       
+        # grabbing author(s) 
+        author_element = soup.find("span", class_="author vcard")
+        if author_element: # continues if author_element is not empty
+            details["AUTHOR(S)"] = author_element.text.strip()
+
+        # grabbing body
+        body_container = soup.find("div", class_="et_pb_column et_pb_column_2_3 et_pb_column_2  et_pb_css_mix_blend_mode_passthrough")
+        if body_container:
+            paragraphs = body_container.find_all("p")
+            details["BODY"] = "\n".join([p.get_text(strip=True) for p in paragraphs])
+
+    except Exception as e:
+        print("Beautifulsoup extraction failed for Alzheon Inc:", link)
+
+    #if not details["TITLE"] and not details["PUBLISH DATE"] and not details["AUTHOR(S)"] and not details["BODY"]:
+        #print("BeautifulSoup returned no details. Now Trying Selenium.")
+
+
+    # fallback on selenium if beautifulsoup fails.
+    if not details["TITLE"] or not details["PUBLISH DATE"] or not details["AUTHOR(S)"] or not details["BODY"]:
+        try:
+            driver.get(link)
+            time.sleep(2)
+            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
+
+            # grabbing title
+            if not details["TITLE"]: # continues if title is empty
+                try:
+                    title_element = driver.find_element(By.CLASS_NAME, "entry-title")
+                    details["TITLE"] = title_element.text.strip()
+                except:
+                    details["TITLE"] = "N/A"
+
+
+            # grabbing publish date
+            if not details["PUBLISH DATE"]: # continues if publish date is empty
+                try:
+                    date_element = driver.find_element(By.CLASS_NAME, "published")
+                    details["PUBLISH DATE"] = date_element.text.strip()
+                except:
+                    details["PUBLISH DATE"] = "N/A"
+
+            # grabbing author(s)
+            if not details["AUTHOR(S)"]:
+                try:
+                    author_element = driver.find_element(By.CLASS_NAME, "author vcard")
+                    details["AUTHOR(S)"] = author_element.text.strip()
+                except:
+                    details["AUTHOR(S)"] = "N/A"
+            
+            # grabbing body
+            if not details["BODY"]:
+                try:
+                    body_container = driver.find_element(By.CLASS_NAME, "et_pb_column et_pb_column_2_3 et_pb_column_2  et_pb_css_mix_blend_mode_passthrough")
+                    paragraphs = body_container.find_elements(By.CLASS_NAME, "et_pb_module et_pb_text et_pb_text_0  et_pb_text_align_left et_pb_bg_layout_light")
+                    details["BODY"] = "\n".join([p.text.strip() for p in paragraphs])
+                except:
+                    details["BODY"] = "N/A"
+
+        except Exception as e:
+            print("Selenium extraction failed for Alzheon Inc:", link)
+    
+    return details
 
 
 # ------------------------------------------------------------------------------------------------
@@ -660,31 +723,23 @@ def main():
     print("Setting up driver....")
     driver = setup_driver()
 
-    #sites = { # changed to dictionary in expectation that all sites might need code tailored to them
-        #"adel_inc_url": "https://www.alzinova.com/investors/press-releases/" # Alzheimer's Disease Expert Lab (ADEL), Inc.
-        #"alzheon_inc_url": "https://asceneuron.com/news-events/",  # Alzheon Inc
-        #"alzinova_url": "https://www.bnhresearch.net/press", # Alzinova AB
-        #"annovis_bio_url": "https://synapse.patsnap.com/news" # Annovis Bio Inc.
-        #"aprinoia_ther_url": "https://www.ab-science.com/news-and-media/press-releases/", # APRINOIA Therapeutics, LLC
-    #}
-
     site_details = {
     "adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
         "url": "https://www.alzinova.com/investors/press-releases/",
         "article_container": {"tag": "div", "class": "mfn-content"},
         "button_xpath": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
         "detail_getter": get_adel_details
-    }
+        },
+    "alzheon_inc_url": { # Alzheon Inc
+        "url": "https://asceneuron.com/news-events/",
+        "article_container": {"tag": "div", "class": "df-cpts-inner-wrap"},
+        "button_xpath": "//a[contains(@class, 'df-cptfilter-load-more')]",
+        "detail_getter": get_alzheon_details
+        }
 }
     
     ''' ADD THIS ONCE I GET ALZINOVA WORKING
     ,
-    "alzheon_inc_url": { # Alzheon Inc
-        "url": "https://asceneuron.com/news-events/",
-        "article_container": None,
-        "button_xpath": "",
-        "detail_getter": get_alzheon_details
-    },
     "alzinova_url": { # Alzinova AB
         "url": "https://www.bnhresearch.net/press",
         "article_container": None,
@@ -742,7 +797,5 @@ def main():
 
 # ==========================================================================================
 
-if __name__ == "__main__":
-    main()
 if __name__ == "__main__":
     main()
