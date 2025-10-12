@@ -15,22 +15,23 @@ require it. Selenium will use the firfox driver.
 Notes:
 
 Questions:
-- Is it preferred that I output body to excel file or do a pdf?
+- For the PDF's is the current format okay?
 - For Alzheon Inc there are event, press realses, and news being pulled. Do we want all those?
     - if just want one, can I change the link, or do I need to change code to only pull wanted articles?
-- For output like csv and terminal text, would you like me to upload a current version every week or overwrite old one?
-    
+
+      
 Problems:
-- need to check api code, because every site returned an api is not available
-- Code uses BS and if it finds nothing it then attempts Selenium, causes code to take FOREVER to run.
+- need to check api code, because every site returned an api is not available.
+- pdf prints out a really long page. Longer than what is needed sometimes. Need to work on height adjustments.
 - Alzheon site has multiple space separated classes. Was not one class like ADEL. Need to adjust body code.
 - Could delete author and etc code for ADEL since it does not have authors on article pages.
 
 Fixed Problems:
-- 
+- When screenshotting webpages, cookie pop ups were causing code to not grab whole page
+    - Coded a cookie handler function.
 
 Links:
-- 
+- https://www.lambdatest.com/blog/headless-chrome/ : how to use Chrome DevTools to save a PDF version of a webpage
 
 '''
 
@@ -41,6 +42,7 @@ Links:
 # pip3 install selenium
 # pip3 install webdriver-manager
 # pip3 install beautifulsoup4
+# pip3 install Pillow
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -50,6 +52,10 @@ import re
 import os
 # was picking up external links like https://support.microsoft.com/ added library so can code function that pulls internal links only.
 from urllib.parse import urlparse
+# helps to create unique values for file names or etc.
+from datetime import datetime
+# Using pillow library to open and convert images
+from PIL import Image
 
 # selenium stuff
 # let's user launch a browser
@@ -74,8 +80,6 @@ from selenium.common.exceptions import TimeoutException
 '''
 * function_identifier: setup_driver
 * summary: Sets up and initializes the selenium driver in headless mode, will be used for last resort.
-* known problems:
-    - will change to firefox driver at a later date. Just trying to get other parts of code to work for now.
 '''
 def setup_driver():
     # Configuring chrome
@@ -305,7 +309,7 @@ def filter_internal_links(links, base_url):
 def get_all_pages(site_name, site_info, driver):
     all_links = set() # stores unique links
     base_url = site_info["url"]
-    button_xpath = site_info.get("button_xpath") # if beautifulsoup fails, then selenium will look for a button
+    nav_button = site_info.get("nav_button") # if beautifulsoup fails, then selenium will look for a button
     container = site_info.get("article_container") # stores what element on a site I want to go through to find links. Do pull links from outside the element.
 
     # API Check first
@@ -376,7 +380,7 @@ def get_all_pages(site_name, site_info, driver):
                 
 
     # If going through pages fails, try finding a button and using it (Next, View More, Load More).
-    if not numeric_success and button_xpath:
+    if not numeric_success and nav_button:
         try:
             print("Trying button navigation for", base_url, "...")
             driver.get(base_url)
@@ -410,7 +414,7 @@ def get_all_pages(site_name, site_info, driver):
 
                     print("Checking for a button on:", driver.current_url)
                     # look for the button
-                    button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, button_xpath)))
+                    button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, nav_button)))
                     print("Button found...")
                     driver.execute_script("arguments[0].scrollIntoView(true);", button)
                     time.sleep(1)
@@ -440,7 +444,8 @@ def get_all_pages(site_name, site_info, driver):
                     -------------------------------------------------------------------------------------
                     '''
                     button_count += 1
-                    if button_count > 3:
+                    if button_count > 0:
+                        print("Stopping since max amount of button presses has been reached for testing purposes.")
                         break
                      
                 except TimeoutException:
@@ -517,15 +522,139 @@ def find_alz_articles(driver, links): #using beautiful soup first, then selenium
 
 
 # ------------------------------------------------------------------------------------------------
-#                                 FUNCTIONS: SITE SPECEFIC DETAIL PULLER
+#                                 FUNCTIONS: SITE DETAIL PULLING FUNCTIONS
 # ------------------------------------------------------------------------------------------------
+''' 
+* function_identifier: cookies_handler
+* parameters: Uses selenium driver to look for common cookie consent popups and clicks the accept button.
+'''
+def cookies_handler(driver, cookie_xpath, timeout=5):
+    if not cookie_xpath:
+        return False
+    
+    try:
+        cookie_button = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, cookie_xpath)))
+        driver.execute_script("arguments[0].scrollIntoView(true);", cookie_button)
+        time.sleep(1)
+        cookie_button.click()
+        # print("Cookie consent accepted.") 
+        time.sleep(1) # giving page time to load without cooke consent popup
+        return True
+    except Exception as e:
+        # print("No cookie popup found")
+        return False
+
+    
+''' 
+* function_identifier: add_pdf_detail
+* parameters: Uses selenium driver to open the article and saves the full webpage as a pdf. Then adds the PDF path to the article details dictionary.
+* returns the site specific details dictionary with a new 'PDF LINK'column.
+'''
+def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None):
+    try:
+        url = details.get("URL", "")
+
+        if not url:
+            print("No URL found for this article")
+            details["PDF LINK"] = "No URL found"
+            return details
+        
+        # Checking to see if a folder exists. If not create one.
+        try:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+        except Exception as e:
+            details["PDF LINK"] = "Folder Creation Failed"
+            return details
+        
+        # if cookies is there accept pop up
+        try:
+            if cookie_xpath:
+                cookies_handler(driver, cookie_xpath)
+        except Exception as e:
+            print("No cookie popup found. Continuing...")
+
+        # Resizing the browser window so that it fits the entire page
+        try:
+            total_width = driver.execute_script("return document.documentElement.scrollWidth")
+            total_height = driver.execute_script("return document.documentElement.scrollHeight")
+            driver.set_window_size(total_width, total_height)
+        except Exception as e:
+            print("Could not resize window for", url)
+
+        # Taking a screenshot of webpage
+        try:
+            screenshot_path = os.path.join(folder, "temp_screenshot.png")
+            driver.save_screenshot(screenshot_path) # saves screenshot as PNG
+        except Exception as e:
+            details["PDF LINK"] = "Screenshot failed"
+            return details
+        
+        # Convert screenshot to a pdf
+        try: 
+            image = Image.open(screenshot_path)
+            if image.mode != "RGB": # Converting to RGB because PDFs require thius format
+                image = image.convert("RGB")
+        except Exception as e:
+            details["PDF LINK"] = "Image conversion failed."
+            return details
+        
+        # Naming file based off of the page title
+        try:
+            article_title = details.get("TITLE")
+            # Fallback in case title was unable to be pulled from a get_details function
+            if article_title == "N/A":
+                # output webpage + currentmonth, day, and time as HHMMSS
+                now = datetime.now()
+                time_marker = now.strftime("%m%d_%H%M%S") #MMDD_HHMMSS 
+                article_title = f"webpage_{time_marker}"
+
+            # Removing characters that are not allowed in filenames
+            clean_title = re.sub(r'[\\/*?:"<>|]', "", article_title[:60])
+            file_path = os.path.join(folder, clean_title + ".pdf")
+        except Exception as e:
+            print("Problem creating filename for", url)
+
+        # Save the image as a PDF
+        try:
+            image.save(file_path, "PDF", resolution = 100.0)
+        except Exception as e:
+            details["PDF LINK"] = "PDF save failed"
+            return details
+        
+        # Remove temporary screenshot, since image has been saved as a PDF
+        try:
+            if os.path.exists(screenshot_path):
+                os.remove(screenshot_path)
+        except Exception as e:
+            print("Unable to delete temporary screenshot.")
+
+        try:
+            # Getting the full path to where the pdf is stored
+            absolute_path = os.path.abspath(file_path)
+        except Exception as e:
+            print("Unable to get absolute path.")
+            details["PDF_LINK"] = "Path Error" 
+            return details
+
+        details["PDF LINK"] = absolute_path
+        #print ("Saved PDF for:" + article_title)
+
+    except Exception as e:
+        print("Failed to create PDF for" + details.get("URL"))
+        details["PDF LINK"] = "PDF generation failed"
+
+    return details
+
+
+
 ''' COULD DELETE BEAUTIFUL SOUP PART BECAUSE IT RETURNED NOTHING, OR CREATE A BASIC FUNCTION YOU CAN PASS STORAGE LOCATIONS FOR TITLE AND ETC IN.
 * function_identifier: get_adel_details
 * parameters: this is designed to scrape the details from articles on https://www.alzinova.com/investors/press-releases/ that were found to have the keyword "alzheim."
 * note: ADEL does not have publishers or authors on articles
 '''
-def get_adel_details(driver, link):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "BODY": ""}
+def get_adel_details(driver, link, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
     
     # try using beautifulsoup first
     try:
@@ -607,6 +736,9 @@ def get_adel_details(driver, link):
         except Exception as e:
             print("Selenium extraction failed for ADEL:", link)
     
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+
     return details
 
 
@@ -615,8 +747,8 @@ def get_adel_details(driver, link):
 * parameters: this is designed to scrape the details from articles on https://asceneuron.com/news-events/ that were found to have the keyword "alzheim."
 * problems: site has multiple space separated classes. Was not one class like ADEL.
 '''
-def get_alzheon_details(driver, link):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "BODY": ""}
+def get_alzheon_details(driver, link, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
     
     # try using beautifulsoup first
     try:
@@ -698,6 +830,9 @@ def get_alzheon_details(driver, link):
         except Exception as e:
             print("Selenium extraction failed for Alzheon Inc:", link)
     
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+
     return details
 
 
@@ -722,18 +857,20 @@ def file_remover(file_name): #Avoids continuous appending to documents
 def main():
     print("Setting up driver....")
     driver = setup_driver()
+    total_alz_links = 0
 
     site_details = {
-    "adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
-        "url": "https://www.alzinova.com/investors/press-releases/",
-        "article_container": {"tag": "div", "class": "mfn-content"},
-        "button_xpath": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
-        "detail_getter": get_adel_details
-        },
-    "alzheon_inc_url": { # Alzheon Inc
+    #"adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
+        #"url": "https://www.alzinova.com/investors/press-releases/",
+        #"article_container": {"tag": "div", "class": "mfn-content"},
+        #"nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
+        #"cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
+        #"detail_getter": get_adel_details
+        #},
+        "alzheon_inc_url": { # Alzheon Inc
         "url": "https://asceneuron.com/news-events/",
         "article_container": {"tag": "div", "class": "df-cpts-inner-wrap"},
-        "button_xpath": "//a[contains(@class, 'df-cptfilter-load-more')]",
+        "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
         "detail_getter": get_alzheon_details
         }
 }
@@ -743,19 +880,19 @@ def main():
     "alzinova_url": { # Alzinova AB
         "url": "https://www.bnhresearch.net/press",
         "article_container": None,
-        "button_xpath": "",
+        "nav_button": "",
         "detail_getter": ""
     },
     "annovis_bio_url": { # Annovis Bio Inc.
         "url": "https://synapse.patsnap.com/news",
         "article_container": None,
-        "button_xpath": "",
+        "nav_button": "",
         "detail_getter": ""
     },
     "aprinoia_ther_url": { # APRINOIA Therapeutics, LLC
         "url": "https://www.ab-science.com/news-and-media/press-releases/",
         "article_container": None,
-        "button_xpath": "",
+        "nav_button": "",
         "detail_getter": ""
     }
     '''
@@ -774,16 +911,18 @@ def main():
         # Filter for Alzheimers related content
         try:
             alz_links = find_alz_articles(driver, links)
-            print("\nTotal number of Alzheimer's related links: ", len(alz_links))
+            total_alz_links += len(alz_links)
+            print("\nTotal number of Alzheimer's related links: ", total_alz_links)
         except Exception as e:
             continue
 
         # extraacting article details
         for link in alz_links:
-            article_data = site_details[site_name]["detail_getter"](driver, link)
+            article_data = site_details[site_name]["detail_getter"](driver, link, cookie_button=site_info.get("cookie_button"))
             if article_data:
                 all_article_details.append(article_data)
 
+    print("\n-------------------------------------------------------------------------------------------------------------")
     #Save results to Excel
     try: 
         file_remover("alz_articles.xlsx")
@@ -792,7 +931,8 @@ def main():
         print("Saved results to alz_articles.xlsx")
     except Exception as e:
         print("Failed to save Excel file.")
-    
+    print("---------------------------------------------------------------------------------------------------------------")
+
     driver.quit()
 
 # ==========================================================================================
