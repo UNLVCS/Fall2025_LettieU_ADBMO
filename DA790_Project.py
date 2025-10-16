@@ -15,23 +15,18 @@ require it. Selenium will use the firfox driver.
 Notes:
 
 Questions:
-- For the PDF's is the current format okay?
-- For Alzheon Inc there are event, press realses, and news being pulled. Do we want all those?
-    - if just want one, can I change the link, or do I need to change code to only pull wanted articles?
+- Is it okay for us to allow cookies or should I be denying them? 
+- Do you want a pdf folder for each site, or is one for all pdfs okay?
 
       
 Problems:
+- don't want to pull a full sites data until the way my metadata is setup meets expectations.
 - need to check api code, because every site returned an api is not available.
 - pdf prints out a really long page. Longer than what is needed sometimes. Need to work on height adjustments.
-- Alzheon site has multiple space separated classes. Was not one class like ADEL. Need to adjust body code.
-- Could delete author and etc code for ADEL since it does not have authors on article pages.
 
-Fixed Problems:
-- When screenshotting webpages, cookie pop ups were causing code to not grab whole page
-    - Coded a cookie handler function.
 
 Links:
-- https://www.lambdatest.com/blog/headless-chrome/ : how to use Chrome DevTools to save a PDF version of a webpage
+- 
 
 '''
 
@@ -83,15 +78,25 @@ from selenium.common.exceptions import TimeoutException
 '''
 def setup_driver():
     # Configuring chrome
-    options = Options()
-    options.add_argument("--headless=new") # will make it to where things run in the background without opening a browser
-    options.add_argument("--window-size=1920,1200") # decides window size
-    options.add_argument("--log-level=3")  # prevents logs from spamming the terminal. info=0, warning=1, log_error=2, log_fatal=3
-    # Initializing a chrome driver that will automatically use the correct driver
-    print("Installing ChromeDriver...")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    print("Driver setup complete!")
-    return driver 
+    try:
+        options = Options()
+        options.add_argument("--headless=new") # will make it to where things run in the background without opening a browser
+        options.add_argument("--window-size=1920,1200") # decides window size
+        options.add_argument("--log-level=3")  # prevents logs from spamming the terminal. info=0, warning=1, log_error=2, log_fatal=3
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" #Trying to avoid sites from seeing me as a bnot since I am using headless mode.
+                    "AppleWebKit/537.36 (KHTML, like Gecko)"
+                    "Chrome/118.0.5993.117 Safari/537.36")
+
+        # Initializing a chrome driver that will automatically use the correct driver
+        print("Installing ChromeDriver...")
+        try:
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        except Exception as e:
+            print("Failed to initialize Chrome driver...")
+        print("Driver setup complete!")
+        return driver 
+    except Exception as e:
+        print("An unexpected error occured during driver setup.")
 
 '''
 * function_identifier: api_check
@@ -132,6 +137,8 @@ def get_links_bs(url, container=None):
             for a in c.find_all("a", href=True):
                 href = a["href"]  # get the URL from href
                 if href.startswith("http"):  # only keep full URLs
+                    if "page=" in href: # do not want to add pagination pages to our list of links
+                        continue
                     links.append(href)
     
     except Exception as e:
@@ -166,6 +173,8 @@ def get_links_sel(url, driver, reload=True, container=None):
         for element in link_elements:
             href = element.get_attribute("href")
             if href and href.startswith("http"):
+                if "page=" in href: # do not want to add pagination pages to our list of links
+                    continue
                 links.append(href)
     
     # remove duplicates before returning
@@ -183,30 +192,46 @@ def get_links_sel(url, driver, reload=True, container=None):
 If container is found it returns the container. If not, it returns the whole soup.
 '''
 def get_bs_container(soup, container=None):
-    if container:
-        container_tag = container.get("tag")
-        container_class = container.get("class")
+    try:
+        if container:
+            try:
+                container_tag = container.get("tag")
+                container_class = container.get("class")
+            except Exception as e:
+                print("Unable to pull tag and/or class from container info.")
+                return [soup]
 
-        # find the main container
-        outer = soup.find(container_tag, class_=container_class)
+            # Try to find the main container
+            try:
+                outer = soup.find(container_tag, class_=container_class)
+            except Exception as e:
+                print("Container not found.")
+                return [soup]
 
-        if outer:
-            containers = []
-            # loop through all children of the container
-            children = outer.find_all(True)  # True finds all tags
-            for child in children.find_all(True): #True gets all tags
-                if child.find("a", href=True): # if child has links
-                    containers.append(child)
+            if outer:
+                containers = []
+                try:
+                    # loop through all children of the container
+                    children = outer.find_all(True)  # True finds all tags
+                    for child in children:
+                        if child.find("a", href=True): # if child has links
+                            containers.append(child)
+                except Exception as e:
+                    print("Error occured when looking through children nodes for links.")
 
-            if containers: # if any children were found with links
-                return containers
-            else: # fallback and use the main container
-                return [outer]
-            
+                if containers:  # if any children were found with links
+                    return containers
+                else:  # fallback and use the main container
+                    return [outer]
+            else:
+                print("Container not found. Scraping whole page.")
+                return [soup]
         else:
-            print("Container not found. Scraping whole page.")
-            
-    return [soup]
+            return [soup]
+
+    except Exception as e:
+        print("Unexpected error occured in get_bs_container")
+        return [soup]
 
 
 '''
@@ -216,19 +241,31 @@ If container is found it returns the container. If not, it returns none and get_
 '''
 def get_sel_container(driver, container=None):
     if container:
-        container_tag = container.get("tag")
-        container_class = container.get("class")
+        try:
+            container_tag = container.get("tag")
+            container_class = container.get("class")
+        except Exception as e:
+            print("Unable to pull tag and/or class from container info.")
+            return [driver]
+
         try:
             # find the main container
-            outer = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"{container_tag}.{container_class}"))) 
+            try:
+                outer = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"{container_tag}.{container_class}"))) 
+            except Exception as e:
+                print("Container not found or timed out.")
+                return [driver]
+            
             containers = []
-
             # look through all children to see if they have links
-            children = outer.find_elements(By.XPATH, ".//*")  # all descendants
-            for child in children:
-                links = child.find_elements(By.TAG_NAME, "a")
-                if links:  # if child has any <a> links
-                    containers.append(child)
+            try:
+                children = outer.find_elements(By.XPATH, ".//*")  # all descendants
+                for child in children:
+                    links = child.find_elements(By.TAG_NAME, "a")
+                    if links:  # if child has any <a> links
+                        containers.append(child)
+            except Exception as e:
+                print("Error occured when looking through children nodes for links.")
             
             if containers:
                 return containers
@@ -444,7 +481,7 @@ def get_all_pages(site_name, site_info, driver):
                     -------------------------------------------------------------------------------------
                     '''
                     button_count += 1
-                    if button_count > 0:
+                    if button_count > 3:
                         print("Stopping since max amount of button presses has been reached for testing purposes.")
                         break
                      
@@ -466,9 +503,9 @@ def get_all_pages(site_name, site_info, driver):
 
 '''
 * function_identifier: find_alz_articles
-* summary: Search through all links and find all articles relating to alzheimers.
+* summary: Search through all collected links and find all articles relating to alzheimers.
 '''
-def find_alz_articles(driver, links): #using beautiful soup first, then selenium. Was originally only using selenium. 
+def find_alz_articles(driver, links, cookie_button=None): #using beautiful soup first, then selenium. Was originally only using selenium. 
     alz_article_links = [] # will store all link that have any desired key words (ex.alzheim)
     bs_matches = 0 # will be used to output how many matches were found using beautiful soup
     sel_matches = 0 # will be used to output how many matches were found using selenium
@@ -483,35 +520,55 @@ def find_alz_articles(driver, links): #using beautiful soup first, then selenium
             time.sleep(3)
             soup = BeautifulSoup(r.text, "html.parser")
             page_text = soup.get_text().lower() # grabbing all text in lower case
-            if "alzheim" in page_text:
-                alz_article_links.append(link)
-                bs_matches += 1
-                found = True
+            try:
+                if "alzheim" in page_text:
+                    alz_article_links.append(link)
+                    bs_matches += 1
+                    found = True
+            except Exception as e:
+                print("Error checking BS text for keyword(s) in link:", link)
         except Exception as e:
-            pass
+            print("Failed to get page with BS for:",link)
 
         # Last resort : try selenium  
         if not found:
-            try:  
-                driver.get(link)
-                time.sleep(3)
+            try:
+                try:  
+                    driver.get(link)
+                    time.sleep(1)
+
+                    #handle cookies popup if present
+                    if cookie_button:
+                        cookies_handler(driver, cookie_button, timeout=5)
+                
+                except Exception as e:
+                    print("Unable to open", link, "with driver for keyword(s) analysis...")
+                    print("Exception:", e)
+
                 # Wait until body is present then grab the body and extract the text
                 try:
                     body_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
                     body_text = body_element.text.lower()
                 except TimeoutException:
                     body_text = ""
+                    print("Error retrieving body for keyword(s) analysis using Selenium...")
 
                 # getting title text
-                title_text = driver.title.lower() # gets text inside <title> to extract title
+                try:
+                    title_text = driver.title.lower() # gets text inside <title> to extract title
+                except Exception as e:
+                    print("Error retrieving title for keyword(s) analysis using Selenium...")
 
                 #checking to see if alzheim is in the body or title text. If so, append the link.
-                if "alzheim" in body_text or "alzheim" in title_text:
-                    alz_article_links.append(link)
-                    sel_matches += 1
+                try:
+                    if "alzheim" in body_text or "alzheim" in title_text:
+                        alz_article_links.append(link)
+                        sel_matches += 1
+                except Exception as e:
+                    print("Unable to add keyword(s) link to alz_article_links.")
 
             except Exception as e:
-                print("Error checking", link, "with Selenium")
+                print("Failed to get page with Selenium for:", link)
                 continue
 
     print("Links with Alzheimer content found using BeautifulSoup:", bs_matches)
@@ -522,7 +579,7 @@ def find_alz_articles(driver, links): #using beautiful soup first, then selenium
 
 
 # ------------------------------------------------------------------------------------------------
-#                                 FUNCTIONS: SITE DETAIL PULLING FUNCTIONS
+#                                 FUNCTIONS: PDF CREATION FUNCTIONS
 # ------------------------------------------------------------------------------------------------
 ''' 
 * function_identifier: cookies_handler
@@ -537,11 +594,11 @@ def cookies_handler(driver, cookie_xpath, timeout=5):
         driver.execute_script("arguments[0].scrollIntoView(true);", cookie_button)
         time.sleep(1)
         cookie_button.click()
-        # print("Cookie consent accepted.") 
+        print("Accepted cookies.") 
         time.sleep(1) # giving page time to load without cooke consent popup
         return True
     except Exception as e:
-        # print("No cookie popup found")
+        #print("No cookie popup found")
         return False
 
     
@@ -644,97 +701,60 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
         print("Failed to create PDF for" + details.get("URL"))
         details["PDF LINK"] = "PDF generation failed"
 
+    print("PDF has been created.")
     return details
 
 
+# ------------------------------------------------------------------------------------------------
+#                                 FUNCTIONS: SITE DETAIL PULLING FUNCTIONS
+# ------------------------------------------------------------------------------------------------
 
 ''' COULD DELETE BEAUTIFUL SOUP PART BECAUSE IT RETURNED NOTHING, OR CREATE A BASIC FUNCTION YOU CAN PASS STORAGE LOCATIONS FOR TITLE AND ETC IN.
 * function_identifier: get_adel_details
 * parameters: this is designed to scrape the details from articles on https://www.alzinova.com/investors/press-releases/ that were found to have the keyword "alzheim."
-* note: ADEL does not have publishers or authors on articles
+* note: No details were found using BS, removed that section. ADEL does not have publishers or authors on articles
 '''
 def get_adel_details(driver, link, cookie_button=None):
     details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
-    
-    # try using beautifulsoup first
+
+    # Using selenium only because beautifulsoup returned no details.
     try:
-        r = requests.get(link, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
+        driver.get(link)
+        time.sleep(2)
+        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
 
-        # grabbing publisher
+        # Site has no publishers
         details["PUBLISHER"] = "Alzheimer's Disease Expert Lab (ADEL), Inc."
-        
-        # grabbing title
-        title_element = soup.find("div", class_="mfn-title")
-        if title_element: #continues if title_element is not empty
-            details["TITLE"] = title_element.text.strip() #strip gives a clean output
-        
-        # grabbing publish date
-        date_element = soup.find("span", class_="mfn-date")
-        if date_element: # continues if date_element is not empty
-            details["PUBLISH DATE"] = date_element.text.strip()
-       
-        # grabbing author(s) 
-        author_element = soup.find("span", class_="author")
-        if author_element: # continues if author_element is not empty
-            details["AUTHOR(S)"] = author_element.text.strip()
+        # Site has no authors
+        details["AUTHOR(S)"] = "N/A"
 
+        # grabbing title
+        if not details["TITLE"]: # continues if title is empty
+            try:
+                title_element = driver.find_element(By.CLASS_NAME, "mfn-title")
+                details["TITLE"] = title_element.text.strip()
+            except:
+                details["TITLE"] = "N/A"
+
+        # grabbing publish date
+        if not details["PUBLISH DATE"]: # continues if publish date is empty
+            try:
+                date_element = driver.find_element(By.CLASS_NAME, "mfn-date")
+                details["PUBLISH DATE"] = date_element.text.strip()
+            except:
+                details["PUBLISH DATE"] = "N/A"
+            
         # grabbing body
-        body_container = soup.find("div", class_="mfn-body")
-        if body_container:
-            paragraphs = body_container.find_all("p")
-            details["BODY"] = "\n".join([p.get_text(strip=True) for p in paragraphs])
+        if not details["BODY"]:
+            try:
+                body_container = driver.find_element(By.CLASS_NAME, "mfn-body")
+                paragraphs = body_container.find_elements(By.TAG_NAME, "p")
+                details["BODY"] = "\n".join([p.text.strip() for p in paragraphs])
+            except:
+                details["BODY"] = "N/A"
 
     except Exception as e:
-        print("Beautifulsoup extraction failed for ADEL:", link)
-
-    #if not details["TITLE"] and not details["PUBLISH DATE"] and not details["AUTHOR(S)"] and not details["BODY"]:
-        #print("BeautifulSoup returned no details. Now Trying Selenium.")
-
-
-    # fallback on selenium if beautifulsoup fails.
-    if not details["TITLE"] or not details["PUBLISH DATE"] or not details["AUTHOR(S)"] or not details["BODY"]:
-        try:
-            driver.get(link)
-            time.sleep(2)
-            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
-
-            # grabbing title
-            if not details["TITLE"]: # continues if title is empty
-                try:
-                    title_element = driver.find_element(By.CLASS_NAME, "mfn-title")
-                    details["TITLE"] = title_element.text.strip()
-                except:
-                    details["TITLE"] = "N/A"
-
-
-            # grabbing publish date
-            if not details["PUBLISH DATE"]: # continues if publish date is empty
-                try:
-                    date_element = driver.find_element(By.CLASS_NAME, "mfn-date")
-                    details["PUBLISH DATE"] = date_element.text.strip()
-                except:
-                    details["PUBLISH DATE"] = "N/A"
-
-            # grabbing author(s)
-            if not details["AUTHOR(S)"]:
-                try:
-                    author_element = driver.find_element(By.CLASS_NAME, "author")
-                    details["AUTHOR(S)"] = author_element.text.strip()
-                except:
-                    details["AUTHOR(S)"] = "N/A"
-            
-            # grabbing body
-            if not details["BODY"]:
-                try:
-                    body_container = driver.find_element(By.CLASS_NAME, "mfn-body")
-                    paragraphs = body_container.find_elements(By.TAG_NAME, "p")
-                    details["BODY"] = "\n".join([p.text.strip() for p in paragraphs])
-                except:
-                    details["BODY"] = "N/A"
-
-        except Exception as e:
-            print("Selenium extraction failed for ADEL:", link)
+        print("Selenium extraction failed for ADEL:", link)
     
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
@@ -745,11 +765,11 @@ def get_adel_details(driver, link, cookie_button=None):
 '''
 * function_identifier: get_alzheon_details
 * parameters: this is designed to scrape the details from articles on https://asceneuron.com/news-events/ that were found to have the keyword "alzheim."
-* problems: site has multiple space separated classes. Was not one class like ADEL.
+* note: BS always found title, publish date, and author(s) if they existed. Body was found using Selenium and BS. No publishers listed.
 '''
 def get_alzheon_details(driver, link, cookie_button=None):
     details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
-    
+
     # try using beautifulsoup first
     try:
         r = requests.get(link, timeout=10)
@@ -759,82 +779,126 @@ def get_alzheon_details(driver, link, cookie_button=None):
         details["PUBLISHER"] = "Alzheon Inc."
         
         # grabbing title
-        title_element = soup.find("div", class_="entry-title")
+        title_element = soup.find("h1", class_="entry-title")
         if title_element: #continues if title_element is not empty
             details["TITLE"] = title_element.text.strip() #strip gives a clean output
-        
+            print("Found title using BS")
+
         # grabbing publish date
         date_element = soup.find("span", class_="published")
         if date_element: # continues if date_element is not empty
             details["PUBLISH DATE"] = date_element.text.strip()
-       
+            print("Found publish date using BS")
+
         # grabbing author(s) 
         author_element = soup.find("span", class_="author vcard")
         if author_element: # continues if author_element is not empty
             details["AUTHOR(S)"] = author_element.text.strip()
+            print("Found author using BS")
+        else:
+            details["AUTHOR(S)"] = "N/A"
 
         # grabbing body
-        body_container = soup.find("div", class_="et_pb_column et_pb_column_2_3 et_pb_column_2  et_pb_css_mix_blend_mode_passthrough")
+        body_container = soup.select("div.et_pb_text_inner")
         if body_container:
-            paragraphs = body_container.find_all("p")
-            details["BODY"] = "\n".join([p.get_text(strip=True) for p in paragraphs])
+            all_text = []
+            for block in body_container: # keeping body paragraph text
+                paragraphs = block.find_all("p")
+                for p in paragraphs:
+                    txt = p.get_text(strip=True)
+                    if txt:
+                        all_text.append(txt)
+            details["BODY"] = "\n".join(all_text)
+            print("Found body using BS")
 
     except Exception as e:
-        print("Beautifulsoup extraction failed for Alzheon Inc:", link)
+        print("Beautifulsoup extraction not fully successful. Switching to Selenium for further analysis.")
 
-    #if not details["TITLE"] and not details["PUBLISH DATE"] and not details["AUTHOR(S)"] and not details["BODY"]:
-        #print("BeautifulSoup returned no details. Now Trying Selenium.")
-
-
-    # fallback on selenium if beautifulsoup fails.
-    if not details["TITLE"] or not details["PUBLISH DATE"] or not details["AUTHOR(S)"] or not details["BODY"]:
+    # using selenium for body if beautifulsoup fails.
+    if not details["BODY"]:
         try:
             driver.get(link)
             time.sleep(2)
             WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
 
-            # grabbing title
-            if not details["TITLE"]: # continues if title is empty
-                try:
-                    title_element = driver.find_element(By.CLASS_NAME, "entry-title")
-                    details["TITLE"] = title_element.text.strip()
-                except:
-                    details["TITLE"] = "N/A"
-
-
-            # grabbing publish date
-            if not details["PUBLISH DATE"]: # continues if publish date is empty
-                try:
-                    date_element = driver.find_element(By.CLASS_NAME, "published")
-                    details["PUBLISH DATE"] = date_element.text.strip()
-                except:
-                    details["PUBLISH DATE"] = "N/A"
-
-            # grabbing author(s)
-            if not details["AUTHOR(S)"]:
-                try:
-                    author_element = driver.find_element(By.CLASS_NAME, "author vcard")
-                    details["AUTHOR(S)"] = author_element.text.strip()
-                except:
-                    details["AUTHOR(S)"] = "N/A"
-            
             # grabbing body
             if not details["BODY"]:
                 try:
-                    body_container = driver.find_element(By.CLASS_NAME, "et_pb_column et_pb_column_2_3 et_pb_column_2  et_pb_css_mix_blend_mode_passthrough")
-                    paragraphs = body_container.find_elements(By.CLASS_NAME, "et_pb_module et_pb_text et_pb_text_0  et_pb_text_align_left et_pb_bg_layout_light")
-                    details["BODY"] = "\n".join([p.text.strip() for p in paragraphs])
+                    body_blocks = driver.find_elements(By.CSS_SELECTOR, "div.et_pb_text_inner")
+                    all_text = []
+                    for block in body_blocks:
+                        paragraphs = block.find_elements(By.TAG_NAME, "p")
+                        for p in paragraphs:
+                            txt = p.text.strip()
+                            if txt:
+                                all_text.append(txt)
+                    details["BODY"] = "\n".join(all_text)
+                    print("Found body using Selenium\n")
                 except:
                     details["BODY"] = "N/A"
 
         except Exception as e:
-            print("Selenium extraction failed for Alzheon Inc:", link)
+            print("Unable to locate all metadata for Alzheon Inc:", link)
     
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
 
     return details
 
+'''
+* function_identifier: get_aliada_details
+* parameters: this is designed to scrape the details from articles on https://investors.alnylam.com/press-releases that were found to have the keyword "alzheim."
+* note: No authors. BS Found title, publish date, and body.
+'''
+def get_aliada_details(driver, link, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
+
+    # try using BS first
+    try:
+        r = requests.get(link, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        # grabbing publisher
+        details["PUBLISHER"] = "Aliada Therapuetics"
+        
+        # grabbing title
+        title_element = soup.find("h2", class_=["press-d-title", "mt-0"])
+        if title_element: #continues if title_element is not empty
+            details["TITLE"] = title_element.text.strip() #strip gives a clean output
+            print("Found title using BS")
+
+        # grabbing publish date
+        date_element = soup.find("p", class_="event-date")
+        if date_element: # continues if date_element is not empty
+            details["PUBLISH DATE"] = date_element.text.strip()
+            print("Found publish date using BS")
+
+        # grabbing author(s)
+        details["AUTHOR(S)"] = "N/A"
+
+        # grabbing body
+        body_container = soup.select("div.col-sm-9")
+        if body_container:
+            all_text = []
+            for block in body_container: # keeping body paragraph text
+                paragraphs = block.find_all("p")
+                for p in paragraphs:
+                    txt = p.get_text(strip=True)
+                    if txt:
+                        all_text.append(txt)
+            details["BODY"] = "\n".join(all_text)
+            print("Found body using BS")
+
+        if not details["TITLE"] and not details["PUBLISH DATE"] and not details["BODY"]:
+            print("BeautifulSoup returned no details. Now Trying Selenium.")
+        
+    except Exception as e:
+        print("Beautifulsoup extraction not fully successful.") 
+
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+
+    return details
 
 # ------------------------------------------------------------------------------------------------
 #                                 FUNCTIONS: OTHER
@@ -855,72 +919,68 @@ def file_remover(file_name): #Avoids continuous appending to documents
 #                                 MAIN FUNCTION
 # ==========================================================================================
 def main():
-    print("Setting up driver....")
-    driver = setup_driver()
     total_alz_links = 0
 
     site_details = {
-    #"adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
-        #"url": "https://www.alzinova.com/investors/press-releases/",
-        #"article_container": {"tag": "div", "class": "mfn-content"},
-        #"nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
-        #"cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
-        #"detail_getter": get_adel_details
-        #},
-        "alzheon_inc_url": { # Alzheon Inc
+    # working
+    "adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
+        "url": "https://www.alzinova.com/investors/press-releases/",
+        "article_container": {"tag": "div", "class": "mfn-content"},
+        "nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
+        "cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
+        "detail_getter": get_adel_details
+        },
+    # working
+    "alzheon_inc_url": { # Alzheon Inc
         "url": "https://asceneuron.com/news-events/",
         "article_container": {"tag": "div", "class": "df-cpts-inner-wrap"},
         "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
         "detail_getter": get_alzheon_details
+        },
+    # workling 
+    "aliada_th_url": { # Aliada Therapuetics
+        "url": "https://investors.alnylam.com/press-releases",
+        "article_container": {"tag": "div", "class": "financial-info-table"},
+        "nav_button": "//a[contains(@rel, 'next')]",
+        "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+        "detail_getter": get_aliada_details
         }
+    
 }
     
-    ''' ADD THIS ONCE I GET ALZINOVA WORKING
-    ,
-    "alzinova_url": { # Alzinova AB
-        "url": "https://www.bnhresearch.net/press",
-        "article_container": None,
-        "nav_button": "",
-        "detail_getter": ""
-    },
-    "annovis_bio_url": { # Annovis Bio Inc.
-        "url": "https://synapse.patsnap.com/news",
-        "article_container": None,
-        "nav_button": "",
-        "detail_getter": ""
-    },
-    "aprinoia_ther_url": { # APRINOIA Therapeutics, LLC
-        "url": "https://www.ab-science.com/news-and-media/press-releases/",
-        "article_container": None,
-        "nav_button": "",
-        "detail_getter": ""
-    }
-    '''
+    
     all_article_details = []
 
     for site_name, site_info in site_details.items():
         base_url = site_info["url"]
         print("\n-------------------------------------------------------------------------------------------------------------")
         
-        try:
-            links = get_all_pages(site_name, site_info, driver)
-            print("\nTotal number of links found on", base_url, ":", len(links))
-        except Exception as e:
-            continue
-        
-        # Filter for Alzheimers related content
-        try:
-            alz_links = find_alz_articles(driver, links)
-            total_alz_links += len(alz_links)
-            print("\nTotal number of Alzheimer's related links: ", total_alz_links)
-        except Exception as e:
-            continue
+        print("Setting up driver....")
+        driver = setup_driver()
 
-        # extraacting article details
-        for link in alz_links:
-            article_data = site_details[site_name]["detail_getter"](driver, link, cookie_button=site_info.get("cookie_button"))
-            if article_data:
-                all_article_details.append(article_data)
+        try:
+            # Get all Pages
+            try:
+                links = get_all_pages(site_name, site_info, driver)
+                print("\nTotal number of links found on", base_url, ":", len(links))
+            except Exception as e:
+                continue
+            
+            # Filter for Alzheimers related content
+            try:
+                alz_links = find_alz_articles(driver, links, cookie_button=site_info.get("cookie_button"))
+                total_alz_links += len(alz_links)
+                print("\nTotal number of Alzheimer's related links: ", total_alz_links)
+            except Exception as e:
+                continue
+
+            # extraacting article details
+            for link in alz_links:
+                article_data = site_details[site_name]["detail_getter"](driver, link, cookie_button=site_info.get("cookie_button"))
+                if article_data:
+                    all_article_details.append(article_data)
+        finally:
+            driver.quit()
 
     print("\n-------------------------------------------------------------------------------------------------------------")
     #Save results to Excel
@@ -932,8 +992,6 @@ def main():
     except Exception as e:
         print("Failed to save Excel file.")
     print("---------------------------------------------------------------------------------------------------------------")
-
-    driver.quit()
 
 # ==========================================================================================
 
