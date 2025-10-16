@@ -1,16 +1,16 @@
+-------------------------------------------------------------------------------------------------------------
 Setting up driver....
 Installing ChromeDriver...
 
-DevTools listening on ws://127.0.0.1:61689/devtools/browser/633a8029-97c0-4740-8d9e-92ed70906da4
+DevTools listening on ws://127.0.0.1:61158/devtools/browser/91f97c2f-6432-4b09-9b66-b4c192c5a8ff
 Driver setup complete!
-
--------------------------------------------------------------------------------------------------------------
 Checking https://www.alzinova.com/investors/press-releases/ for links.
 Container not found. Scraping whole page.
-Found 37 links overall on https://www.alzinova.com/investors/press-releases/ when using Beautiful Soup.
-Grabbing links from: https://www.alzinova.com/investors/press-releases/?page=1      
-Container not found. Scraping whole page.
-Found 37 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Beautiful Soup.
+Found 37 links overall on https://www.alzinova.com/investors/press-releases/ when using Beautiful Soup.    
+Grabbing links from: https://www.alzinova.com/investors/press-releases/?page=1
+Failed to get links from https://www.alzinova.com/investors/press-releases/?page=1 when using requests by BeautifulSoup.
+Found 0 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Beautiful Soup.
+Found 0 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Selenium.
 No new links found on page 1
 Grabbing links from: https://www.alzinova.com/investors/press-releases/?page=2
 Container not found. Scraping whole page.
@@ -18,47 +18,43 @@ Found 37 links overall on https://www.alzinova.com/investors/press-releases/?pag
 No new links found on page 2
 Numeric pagination produced no new links. Switching to button navigation.
 
-Trying button navigation for https://www.alzinova.com/investors/press-releases/ ... 
+Trying button navigation for https://www.alzinova.com/investors/press-releases/ ...
 Searching home page...
 Found 10 links overall on https://www.alzinova.com/investors/press-releases/ when using Selenium.
 Number of new links found: 10
-Checking for a button on: https://www.alzinova.com/investors/press-releases/        
+Checking for a button on: https://www.alzinova.com/investors/press-releases/
 Button found...
 Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Selenium.
 Number of new links found: 10
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=1 
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=1
 Button found...
 Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=2 when using Selenium.
 Number of new links found: 10
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=2 
+Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=2
 Button found...
-Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=3 when using Selenium.
-Number of new links found: 10
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=3 
-Button found...
+Stopping since max amount of button presses has been reached for testing purposes.
 
-Total number of links found on https://www.alzinova.com/investors/press-releases/ : 40
+Total number of links found on https://www.alzinova.com/investors/press-releases/ : 30
 Checking articles for Alzheimer's related content...
-Links with Alzheimer content found using BeautifulSoup: 40
+Links with Alzheimer content found using BeautifulSoup: 30
 Links with Alzheimer content found using Selenium: 0
 
-Total number of Alzheimer's related links:  40
-Beautifulsoup extraction failed for ADEL: https://www.alzinova.com/investors/press-releases/press/?slug=alzinova-announces-outcome-in-rights-issue
+Total number of Alzheimer's related links:  30
+Accepted cookies.
 
 -------------------------------------------------------------------------------------------------------------
+Setting up driver....
+Installing ChromeDriver...
+
+DevTools listening on ws://127.0.0.1:55534/devtools/browser/5a47c3ee-91fb-43b8-9cb4-ef9b4d265b85
+Driver setup complete!
 Checking https://asceneuron.com/news-events/ for links.
-Failed to get links from https://asceneuron.com/news-events/ when using requests by BeautifulSoup.
-Found 0 links overall on https://asceneuron.com/news-events/ when using Beautiful Soup.
-Found 14 links overall on https://asceneuron.com/news-events/ when using Selenium.
+Found 14 links overall on https://asceneuron.com/news-events/ when using Beautiful Soup.
 Grabbing links from: https://asceneuron.com/news-events/?page=1
-Failed to get links from https://asceneuron.com/news-events/?page=1 when using requests by BeautifulSoup.
-Found 0 links overall on https://asceneuron.com/news-events/?page=1 when using Beautiful Soup.
-Found 14 links overall on https://asceneuron.com/news-events/?page=1 when using Selenium.
+Found 14 links overall on https://asceneuron.com/news-events/?page=1 when using Beautiful Soup.
 No new links found on page 1
 Grabbing links from: https://asceneuron.com/news-events/?page=2
-Failed to get links from https://asceneuron.com/news-events/?page=2 when using requests by BeautifulSoup.
-Found 0 links overall on https://asceneuron.com/news-events/?page=2 when using Beautiful Soup.
-Found 14 links overall on https://asceneuron.com/news-events/?page=2 when using Selenium.
+Found 14 links overall on https://asceneuron.com/news-events/?page=2 when using Beautiful Soup.
 No new links found on page 2
 Numeric pagination produced no new links. Switching to button navigation.
 
@@ -76,18 +72,153 @@ Found 39 links overall on https://asceneuron.com/news-events/ when using Seleniu
 Number of new links found: 12
 Checking for a button on: https://asceneuron.com/news-events/
 Button found...
-Found 51 links overall on https://asceneuron.com/news-events/ when using Selenium.
-Number of new links found: 12
-Checking for a button on: https://asceneuron.com/news-events/
-Button found...
+Stopping since max amount of button presses has been reached for testing purposes.
 
-Total number of links found on https://asceneuron.com/news-events/ : 51
+Total number of links found on https://asceneuron.com/news-events/ : 39
 Checking articles for Alzheimer's related content...
-Links with Alzheimer content found using BeautifulSoup: 34
+Links with Alzheimer content found using BeautifulSoup: 27
 Links with Alzheimer content found using Selenium: 0
 
-Total number of Alzheimer's related links:  74
+Total number of Alzheimer's related links:  57
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found author using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found author using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found author using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+
+-------------------------------------------------------------------------------------------------------------
+Setting up driver....
+Installing ChromeDriver...
+
+DevTools listening on ws://127.0.0.1:61209/devtools/browser/0e2b0b18-8efd-419e-ad1e-1790b7f00d7f
+Driver setup complete!
+Checking https://investors.alnylam.com/press-releases for links.
+Found 0 links overall on https://investors.alnylam.com/press-releases when using Beautiful Soup.
+Found 18 links overall on https://investors.alnylam.com/press-releases when using Selenium.
+Grabbing links from: https://investors.alnylam.com/press-releases?page=1
+Found 0 links overall on https://investors.alnylam.com/press-releases?page=1 when using Beautiful Soup.
+Found 17 links overall on https://investors.alnylam.com/press-releases?page=1 when using Selenium.
+No new links found on page 1
+Grabbing links from: https://investors.alnylam.com/press-releases?page=2
+Found 0 links overall on https://investors.alnylam.com/press-releases?page=2 when using Beautiful Soup.
+Found 17 links overall on https://investors.alnylam.com/press-releases?page=2 when using Selenium.
+No new links found on page 2
+Numeric pagination produced no new links. Switching to button navigation.
+
+Trying button navigation for https://investors.alnylam.com/press-releases ...
+Searching home page...
+Found 18 links overall on https://investors.alnylam.com/press-releases when using Selenium.
+Number of new links found: 18
+Checking for a button on: https://investors.alnylam.com/press-releases
+Button found...
+Found 18 links overall on https://investors.alnylam.com/press-releases when using Selenium.
+Number of new links found: 11
+Checking for a button on: https://investors.alnylam.com/press-releases
+Button found...
+Found 19 links overall on https://investors.alnylam.com/press-releases when using Selenium.
+Number of new links found: 11
+Checking for a button on: https://investors.alnylam.com/press-releases
+Button found...
+Stopping since max amount of button presses has been reached for testing purposes.
+
+Total number of links found on https://investors.alnylam.com/press-releases : 40
+Checking articles for Alzheimer's related content...
+Failed to get page with BS for: https://investors.alnylam.com/1
+Accepted cookies.
+Failed to get page with BS for: https://investors.alnylam.com/press-release?id=29051
+Links with Alzheimer content found using BeautifulSoup: 3
+Links with Alzheimer content found using Selenium: 0
+
+Total number of Alzheimer's related links:  60
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
+Found title using BS
+Found publish date using BS
+Found body using BS
 
 -------------------------------------------------------------------------------------------------------------
 Saved results to alz_articles.xlsx
--------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
