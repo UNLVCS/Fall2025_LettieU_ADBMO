@@ -225,10 +225,11 @@ Total number of Alzheimer's related links on this site:  40
 
 -------------------------------------------------------------------------------------------------------------
 941 new article links found across all sponsor sites.
-124 new alzheimer links found across all sponsor sites.
+124 new alzheimer links found across all sponsor sites. #number would be higher if I let all 924 be search, only allowed 200
 
 Saved results to alz_articles.xlsx
 ---------------------------------------------------------------------------------------------------------------
+
 
 
 
