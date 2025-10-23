@@ -9,7 +9,7 @@ Total number of links found on https://www.alzinova.com/investors/press-releases
 Total number of links found on https://asceneuron.com/news-events/ : 62
 
 
-TEST RUN TERMINAL OUTPUT:
+TEST RUN TERMINAL OUTPUT (set max button clicks to 5, and max of 40 articles per site for 'alzheim' keyword search):
 -------------------------------------------------------------------------------------------------------------
 Setting up driver....
 Installing ChromeDriver...
@@ -229,5 +229,6 @@ Total number of Alzheimer's related links on this site:  40
 
 Saved results to alz_articles.xlsx
 ---------------------------------------------------------------------------------------------------------------
+
 
 
