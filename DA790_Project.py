@@ -5,30 +5,9 @@ an excel spreadsheet. When gathering the data, it will firstly check if an API i
 is false, the program will move on to using the Requests library with BeautifulSoup4, and only turn to Selenium if dynamic elements 
 require it. 
 * Input: The code requires the website urls to the news/press release home page.
-* Output: A excel spreadsheet of the metadata collected from alzheimer related articles.
+* Output: A csv file of the metadata collected from alzheimer related articles.
 ''' 
 
-# ==========================================================================================
-#                             WEEKLY NOTES, QUESTIONS, PROBLEMS AND LINKS
-# ==========================================================================================
-'''
-Notes:
-
-Questions:
-- Is it okay for us to allow cookies or should I be denying them? 
-- Do you want a pdf folder for each site, or is one for all pdfs okay?
-
-      
-Problems:
-- don't want to pull a full sites data until the way my metadata is setup meets expectations.
-- need to check api code, because every site returned an api is not available.
-- pdf prints out a really long page. Longer than what is needed sometimes. Need to work on height adjustments.
-
-
-Links:
-- 
-
-'''
 
 # ==========================================================================================
 #                                IMPORTS AND INSTALL COMMANDS
@@ -70,7 +49,7 @@ from selenium.common.exceptions import TimeoutException
 
 
 # ==========================================================================================
-#             FUNCTIONS : DRIVER SETUP AND LINK CHECKERS (API, REQUESTS, SELENIUM)
+#             FUNCTIONS : DRIVER SETUP AND LINK CHECKERS (REQUESTS, SELENIUM)
 # ==========================================================================================
 '''
 * function_identifier: setup_driver
@@ -97,25 +76,6 @@ def setup_driver():
         return driver 
     except Exception as e:
         print("An unexpected error occured during driver setup.")
-
-'''
-* function_identifier: api_check
-* summary: Check if the base_url has an API that is available (status==200) and conveniant (contentType==application/json)
-'''
-def api_check(base_url):
-    try:
-        api_url = base_url.rstrip("/") + "/api" # many sites follow this format
-        r = requests.get(api_url, timeout=5) # sending a GET request and waiting 5 seconds for the API to respond
-        if r.status_code == 200:
-            content_type = r.headers.get("Content-Type","")
-            if content_type.startswith("application/json"): # ensures we get json and not html
-                print("Found API at", api_url)
-                return r.json()
-    except Exception as e:
-        pass
-
-    # No usable API has been found, return None
-    return None 
 
 '''
 * function_identifier: get_links_bs
@@ -289,15 +249,7 @@ def get_sel_container(driver, container=None):
 def get_all_links(url, driver, container=None):
     links = []
     
-    # API will attempted 
-    if len(links) == 0:
-        api_links = api_check(url)
-        if api_links:
-            for link in api_links:
-                links.append(link)
-            return links
-    
-    # Requests by Beautiful Soup will be attempted second
+    # Requests by Beautiful Soup will be attempted 
     if len(links) == 0:
         bs_links = get_links_bs(url, container=container)
         if bs_links:
@@ -354,21 +306,6 @@ def get_all_pages(site_name, site_info, driver):
         bs_needed = True
 
     print("Checking", base_url,"for links.")
-
-    # API Check first
-    try:
-        api = api_check(base_url)
-        if api:
-            for j in api:
-                try:
-                    if "url" in j:
-                        all_links.add(j["url"])
-                except Exception as e:
-                    print("Error adding API link." )
-            print("Total links collected via API:", len(all_links))
-            return all_links
-    except Exception as e:
-        print("API check failed.")
 
     # Trying pagination with beautiful soup by searching page=num
     if bs_needed is False:
@@ -501,7 +438,7 @@ def get_all_pages(site_name, site_info, driver):
                     -------------------------------------------------------------------------------------
                     '''
                     button_count += 1
-                    if button_count > 4:
+                    if button_count > 2:
                         print("Stopping since max amount of button presses has been reached for testing purposes.")
                         break
 
@@ -607,7 +544,7 @@ def find_alz_articles(driver, links, cookie_button=None): #using beautiful soup 
         FOR TESTING PURPOSES ONLY REMOVE THIS FOR FINAL PRODUCT
         ------------------------------------------------------------------------------
         '''
-        if links_attempted_counter > 39:
+        if links_attempted_counter > 9:
             print("Stopping because max number of links for testing (", links_attempted_counter,") have been searched for keyword 'alzheim'.")
             break
         '''
@@ -755,7 +692,7 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
 '''
 * function_identifier: get_acadia_pharm_inc_details
 * parameters: this is designed to scrape the details from articles on https://acadia.com/en-us/media/news-releases that were found to have the keyword "alzheim."
-* note: no authors listed on site. Details were successfully pulled using BS.
+* note: no authors listed on site. Details were successfully pulled using BS. No sel needed.
 '''
 def get_acadia_pharm_inc_details(driver, link, cookie_button=None):
     details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}   
@@ -1101,22 +1038,6 @@ def get_alz_research_uk_details(driver, link, cookie_button=None):
     return details
 
 
-
-# ------------------------------------------------------------------------------------------------
-#                                 FUNCTIONS: OTHER
-# ------------------------------------------------------------------------------------------------
-'''
-* function_identifier: file_remover
-* parameters: requires a file name to be passed through
-* return value: if the file exists, remove it. If not, ignore the OSError code and move on.
-'''
-def file_remover(file_name): #Avoids continuous appending to documents
-    try:
-        os.remove(file_name)
-    except OSError:
-        pass
-
-
 # ==========================================================================================
 #                                 MAIN FUNCTION
 # ==========================================================================================
@@ -1126,32 +1047,32 @@ def main():
 
     site_details = {
         # working
-        "acadia_pharm_inc_url": { # ACADIA Pharmaceutical Inc.
-            "url": "https://acadia.com/en-us/media/news-releases",
-            "article_container": {"tag": "div", "class": "results"},
-            "nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
-            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_acadia_pharm_inc_details
-            }, 
+        #"acadia_pharm_inc_url": { # ACADIA Pharmaceutical Inc.
+            #"url": "https://acadia.com/en-us/media/news-releases",
+            #"article_container": {"tag": "div", "class": "results"},
+            #"nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
+            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_acadia_pharm_inc_details
+            #}, 
         # working
-        "aliada_th_url": { # Aliada Therapuetics
-            "url": "https://investors.alnylam.com/press-releases",
-            "article_container": {"tag": "div", "class": "financial-info-table"},
-            "nav_button": "//a[contains(@rel, 'next')]",
-            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_aliada_details
-            },
+        #"aliada_th_url": { # Aliada Therapuetics
+            #"url": "https://investors.alnylam.com/press-releases",
+            #"article_container": {"tag": "div", "class": "financial-info-table"},
+            #"nav_button": "//a[contains(@rel, 'next')]",
+            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_aliada_details
+            #},
         # working
-        "adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
-            "url": "https://www.alzinova.com/investors/press-releases/",
-            "article_container": {"tag": "div", "class": "mfn-content"},
-            "nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
-            "cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_adel_details
-            },
+        #"adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
+            #"url": "https://www.alzinova.com/investors/press-releases/",
+            #"article_container": {"tag": "div", "class": "mfn-content"},
+            #"nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
+            #"cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_adel_details
+            #},
         # working
         "alzheon_inc_url": { # Alzheon Inc
             "url": "https://asceneuron.com/news-events/",
@@ -1159,17 +1080,17 @@ def main():
             "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
             "bs_pagenav_flag": False,
             "detail_getter": get_alzheon_details
-            },
+            }
         # working
         # found no alz_articles with BS, only sel.
-        "alz_research_uk_url": { # Alzheimer's Research UK 
-            "url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
-            "article_container": {"tag": "div", "class": "pp-content-posts"},
-            "nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
-            "cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_alz_research_uk_details
-            },
+        #"alz_research_uk_url": { # Alzheimer's Research UK 
+            #"url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
+            #"article_container": {"tag": "div", "class": "pp-content-posts"},
+            #"nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
+            #"cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_alz_research_uk_details
+            #},
     }
     
     
@@ -1199,7 +1120,7 @@ def main():
             except Exception as e:
                 continue
 
-            # extraacting article details
+            # extracting article details
             for link in alz_links:
                 article_data = site_details[site_name]["detail_getter"](driver, link, cookie_button=site_info.get("cookie_button"))
                 if article_data:
@@ -1211,14 +1132,13 @@ def main():
     print(total_links, "new article links found across all sponsor sites.")
     print(total_alz_links, "new alzheimer links found across all sponsor sites.\n")
     
-    # Save results to Excel
+    # Save results to CSV
     try: 
-        file_remover("alz_articles.xlsx")
         df = pd.DataFrame(all_article_details)
-        df.to_excel("alz_articles.xlsx", index=False)
-        print("Saved results to alz_articles.xlsx")
+        df.to_csv("alz_articles.csv", index=False)
+        print("Saved results to alz_articles.csv")
     except Exception as e:
-        print("Failed to save Excel file.")
+        print("Failed to save CSV file.")
     print("---------------------------------------------------------------------------------------------------------------")
 
 # ==========================================================================================
