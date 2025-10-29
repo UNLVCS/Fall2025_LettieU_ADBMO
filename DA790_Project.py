@@ -49,37 +49,162 @@ from selenium.common.exceptions import TimeoutException
 
 
 # ==========================================================================================
-#             FUNCTIONS : DRIVER SETUP AND LINK CHECKERS (REQUESTS, SELENIUM)
+#                          FUNCTIONS : SELENIUM DRIVER SETUP 
 # ==========================================================================================
 '''
 * function_identifier: setup_driver
 * summary: Sets up and initializes the selenium driver in headless mode, will be used for last resort.
+* return: when successful returns an initialized chrome driver, otherwise returns None.
 '''
 def setup_driver():
-    # Configuring chrome
+    # configuring chrome
     try:
         options = Options()
-        options.add_argument("--headless=new") # will make it to where things run in the background without opening a browser
-        options.add_argument("--window-size=1920,1200") # decides window size
-        options.add_argument("--log-level=3")  # prevents logs from spamming the terminal. info=0, warning=1, log_error=2, log_fatal=3
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" #Trying to avoid sites from seeing me as a bnot since I am using headless mode.
+        options.add_argument("--headless=new") 
+        options.add_argument("--window-size=1920,1200") # set window size so that site pages open in desktop mode
+        options.add_argument("--log-level=3")  # hiding logs that are not level 3. info=0, warning=1, log_error=2, log_fatal=3
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" # setting a user agent so that sites won't flag me as a bot
                     "AppleWebKit/537.36 (KHTML, like Gecko)"
                     "Chrome/118.0.5993.117 Safari/537.36")
 
-        # Initializing a chrome driver that will automatically use the correct driver
+        # Trying to initialize a chrome driver that will automatically use the correct driver version
         print("Installing ChromeDriver...")
         try:
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         except Exception as e:
             print("Failed to initialize Chrome driver...")
+            return None
+        
         print("Driver setup complete!\n")
         return driver 
+    
     except Exception as e:
         print("An unexpected error occured during driver setup.")
+        return None
+
+
+# ==========================================================================================
+#                           FUNCTIONS : LINK CONTAINER FUNCTIONS
+# ==========================================================================================
+'''
+* function_identifier: get_bs_container
+* summary: Returns the BeautifulSoup element(s) to search in for links. Prevents the whole page from being scraped if a container is found.
+* parameters: 
+    - soup: BeautifulSoup that has the whole page.
+    - container: optional dictionary that has the keys 'tag' and 'class' specifying the container to focus on.
+* return: if container is found, return the container. Else, return the whole soup.
+'''
+def get_bs_container(soup, container=None):
+    try:
+        # if container is provided, try to find it
+        if container:
+            try:
+                container_tag = container.get("tag")
+                container_class = container.get("class")
+            except Exception as e:
+                print("Unable to pull tag and/or class from container info.")
+                return [soup]
+
+            # Try to find the main container in the soup
+            try:
+                outer = soup.find(container_tag, class_=container_class)
+            except Exception as e:
+                print("Container not found.")
+                return [soup]
+
+            if outer:
+                containers = []
+                try:
+                    # loop through all child elements in the container
+                    children = outer.find_all(True)  # True finds all tags
+                    for child in children:
+                        if child.find("a", href=True): # only include children that contain links
+                            containers.append(child)
+                except Exception as e:
+                    print("Error occured when looking through children nodes for links.")
+
+                # return children with links if found, otherwise return the main container
+                if containers:  
+                    return containers
+                else:  
+                    return [outer]
+                
+            else:
+                print("Container not found. Scraping whole page.")
+                return [soup]
+
+        # if no container is provided, return the full soup     
+        else: 
+            return [soup]
+
+    except Exception as e:
+        print("Unexpected error occured in get_bs_container")
+        return [soup]
+
 
 '''
+* function_identifier: get_sel_container
+* summary: Returns the Selenium element(s) to search for links. 
+If container is found it returns the container. If not, it returns none and get_links_sel will return all <a> elements that start with http.
+* parameters:
+    - driver: selenium webdriver being used for the browser session
+    - container: optional dictionary that has the keys 'tag' and 'class' specifying the container to focus on.
+* return: if container is found, return the container or the child element that contains links. Else, return the driver so that a whole page search is done.
+'''
+def get_sel_container(driver, container=None):
+    # if container is provided, try to find it
+    if container:
+        try:
+            container_tag = container.get("tag")
+            container_class = container.get("class")
+        except Exception as e:
+            print("Unable to pull tag and/or class from container info.")
+            return [driver]
+
+        try:
+            # attempt to find the main container using a CSS selector
+            try:
+                outer = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"{container_tag}.{container_class}"))) 
+            except Exception as e:
+                print("Container not found or timed out.")
+                return [driver]
+            
+            containers = []
+            
+            try:
+                # look through all children to see if they have links
+                children = outer.find_elements(By.XPATH, ".//*")
+                for child in children:
+                    # only include children that contain <a> links
+                    links = child.find_elements(By.TAG_NAME, "a")
+                    if links:  
+                        containers.append(child)
+            except Exception as e:
+                print("Error occured when looking through children nodes for links.")
+            
+            # return children with links if found, otherwise return the main container
+            if containers:
+                return containers
+            else:
+                return [outer]
+        
+        except Exception as e:
+            print("Container not found. Using whole page.")
+
+    # fallback: use driver itself to scrape whole page
+    return [driver]
+
+
+# ==========================================================================================
+#                          FUNCTIONS : BS AND SEL LINK PULLER FUNCTIONS
+# ==========================================================================================
+'''
 * function_identifier: get_links_bs
-* summary: Grabbing all links from a single page using requests by beautiful soup
+* summary: Grabbing all links from a single page using requests by beautiful soup.
+* parameters:
+    - url: web page url to scrape links from
+    - container: optional dictionary that has the keys 'tag' and 'class' specifying a container to focus on. If None, whole page is searched.
+* return: list of unique links
 '''
 def get_links_bs(url, container=None):
     links = []
@@ -91,13 +216,14 @@ def get_links_bs(url, container=None):
         # get list of containers to search for links
         containers = get_bs_container(soup, container)
 
-        # loop through each container
+        # loop through each container and find all <a> tags with href attributes
         for c in containers:
-            # find all <a> tags with href
             for a in c.find_all("a", href=True):
-                href = a["href"]  # get the URL from href
-                if href.startswith("http"):  # only keep full URLs
-                    if "page=" in href or "/page/" in href: # do not want to add pagination pages to our list of links
+                href = a["href"]  
+                # only keep full URLs that start with "http"
+                if href.startswith("http"): 
+                    # skip pagination links to avoid infinite loops 
+                    if "page=" in href or "/page/" in href: 
                         continue
                     links.append(href)
     
@@ -111,11 +237,18 @@ def get_links_bs(url, container=None):
 
 '''
 * function_identifier: get_links_sel
-* summary: Grabbing all links from a single page using selenium, for fallback if get_links_bs() fails
+* summary: Grabbing all links from a single page using selenium. Fallback if get_links_bs() fails.
+* parameters:
+    - url: web page url to scrape links from
+    - driver: selenium webdriver being used for the browser session
+    - reload: boolean indicating whether to reload the page
+    - container: optional dictionary that has the keys 'tag' and 'class' specifying a container to focus on. If None, whole page is searched.
+* return: list of unique links
 '''
 def get_links_sel(url, driver, reload=True, container=None): 
     if reload:
-        try:  
+        try:
+            # load page and wait until body is present  
             driver.get(url)
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
         except TimeoutException:
@@ -126,13 +259,14 @@ def get_links_sel(url, driver, reload=True, container=None):
     # get the containers to search for links
     containers = get_sel_container(driver, container)
     
-    # loop through each container
+    # loop through each container and find all <a> elements
     for c in containers:
-        # find all <a> tags inside the container
         link_elements = c.find_elements(By.TAG_NAME, "a")
         for element in link_elements:
             href = element.get_attribute("href")
+            # only keep full URLs that start with "http"
             if href and href.startswith("http"):
+                # skip pagination links
                 if "page=" in href or "/page/" in href: # do not want to add pagination pages to our list of links
                     continue
                 links.append(href)
@@ -144,107 +278,16 @@ def get_links_sel(url, driver, reload=True, container=None):
 
 
 # ==========================================================================================
-#                           FUNCTIONS : LINK CONTAINER FUNCTIONS
+#                          FUNCTIONS : PAGE LOOPING AND GENERIC LINK COLLECTOR
 # ==========================================================================================
-'''
-* function_identifier: get_bs_container
-* summary: Returns the BeautifulSoup element(s) to search in for links. Prevents the whole page from being scraped if a container is found.
-If container is found it returns the container. If not, it returns the whole soup.
-'''
-def get_bs_container(soup, container=None):
-    try:
-        if container:
-            try:
-                container_tag = container.get("tag")
-                container_class = container.get("class")
-            except Exception as e:
-                print("Unable to pull tag and/or class from container info.")
-                return [soup]
-
-            # Try to find the main container
-            try:
-                outer = soup.find(container_tag, class_=container_class)
-            except Exception as e:
-                print("Container not found.")
-                return [soup]
-
-            if outer:
-                containers = []
-                try:
-                    # loop through all children of the container
-                    children = outer.find_all(True)  # True finds all tags
-                    for child in children:
-                        if child.find("a", href=True): # if child has links
-                            containers.append(child)
-                except Exception as e:
-                    print("Error occured when looking through children nodes for links.")
-
-                if containers:  # if any children were found with links
-                    return containers
-                else:  # fallback and use the main container
-                    return [outer]
-            else:
-                print("Container not found. Scraping whole page.")
-                return [soup]
-        else:
-            return [soup]
-
-    except Exception as e:
-        print("Unexpected error occured in get_bs_container")
-        return [soup]
-
-
-'''
-* function_identifier: get_sel_container
-* summary: Returns the Selenium element(s) to search in for links. 
-If container is found it returns the container. If not, it returns none and get_links_sel will return all <a> elements that start with http.
-'''
-def get_sel_container(driver, container=None):
-    if container:
-        try:
-            container_tag = container.get("tag")
-            container_class = container.get("class")
-        except Exception as e:
-            print("Unable to pull tag and/or class from container info.")
-            return [driver]
-
-        try:
-            # find the main container
-            try:
-                outer = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"{container_tag}.{container_class}"))) 
-            except Exception as e:
-                print("Container not found or timed out.")
-                return [driver]
-            
-            containers = []
-            # look through all children to see if they have links
-            try:
-                children = outer.find_elements(By.XPATH, ".//*")  # all descendants
-                for child in children:
-                    links = child.find_elements(By.TAG_NAME, "a")
-                    if links:  # if child has any <a> links
-                        containers.append(child)
-            except Exception as e:
-                print("Error occured when looking through children nodes for links.")
-            
-            if containers:
-                return containers
-            else:
-                return [outer]
-        
-        except Exception as e:
-            print("Container not found. Using whole page.")
-
-    # fallback: use driver itself to scrape whole page
-    return [driver]
-
-
-# ------------------------------------------------------------------------------------------------
-#                       FUNCTIONS: PAGE LOOPING AND GENERIC LINK COLLECTOR
-# ------------------------------------------------------------------------------------------------
 '''
 * function_identifier: get_all_links
 * summary: Tries to grab all links from a single page using different methods
+* parameters: 
+    - url: web page url to scrape links from
+    - driver: selenium webdriver being used if the beautifulsoup method fails.
+    - container: optional dictionary that has the keys 'tag' and 'class' specifying a container to focus on. If None, whole page is searched.
+* return: list of unique links
 '''
 def get_all_links(url, driver, container=None):
     links = []
@@ -257,20 +300,24 @@ def get_all_links(url, driver, container=None):
                 links.append(link)
             return links
     
-    # Lastly, Selenium will be attempted
+    # Fallback, Selenium will be attempted because BS found nothing
     if len(links) == 0:
-        sel_links = get_links_sel(url, driver, container=container) # defaults to reload = True
+        sel_links = get_links_sel(url, driver, container=container) # defaults to reload=True
         if sel_links:
             for link in sel_links:
                 links.append(link)
 
-    # removing duplicate links by using set() 
+    # removing duplicate links before returning 
     links = list(set(links))
     return links
 
 '''
 * function_identifier: filter_internal_links()
-* summary: Will filter out external links so that only internal links are returned
+* summary: Will filter out external links so that only internal links that belong to the same domain are returned.
+* parameters:
+    - links: list of URLs to filter
+    - base_url: the base_url whose domain is used to identify internal links
+* return: a list of URLs that are internal to the base URLs domain.
 '''
 def filter_internal_links(links, base_url):
     internal_links = [] # list for storing internal links
@@ -279,13 +326,12 @@ def filter_internal_links(links, base_url):
     parsed_base = urlparse(base_url)
     base_domain = parsed_base.netloc
 
-    # Loop through each link in the list
+    # Loop through each link in the list and check if it belongs to the same domain
     for link in links:
-        # Parse the domain of the current link
         parsed_link = urlparse(link)
         link_domain = parsed_link.netloc
 
-        # See if link domain matches the base domain, if it does append it to internal_links list
+        # if link domain matches the base domain, append it to internal_links list
         if link_domain == base_domain:
             internal_links.append(link)
 
@@ -293,21 +339,28 @@ def filter_internal_links(links, base_url):
 
 '''
 * function_identifier: get_all_pages
-* summary: Go through all pages of a base_url and grab article links from all pages (if there are multiple pages) by following the typical website design ?page=num or &page=num.
+* summary: Go through all pages of a base_url and grab article links from all page(s) by using page or button navigation.
+* parameters:
+    - site_name: name of the website
+    - site_info: dictionary containing site-specefic information
+    - driver: selenium webdriver used for button based page navigation
+* return: a set of unique internal article links found across all pages
 '''
 def get_all_pages(site_name, site_info, driver):
     all_links = set() # stores unique links
     base_url = site_info["url"]
-    nav_button = site_info.get("nav_button") # if beautifulsoup fails, then selenium will look for a button
-    container = site_info.get("article_container") # stores what element on a site I want to go through to find links. Do pull links from outside the element.
+    nav_button = site_info.get("nav_button") # for selenium based button navigation
+    container = site_info.get("article_container") # container for articles
+    
+    # determines if numeric pagination using bs is applicable.
     try:
-        bs_needed = site_info.get("bs_pagenav_flag") # bs_pagenav_flag will = False if BS page navigation is not applicable to a site and only button navigation is.
+        bs_needed = site_info.get("bs_pagenav_flag")
     except Exception as e:
         bs_needed = True
 
     print("Checking", base_url,"for links.")
 
-    # Trying pagination with beautiful soup by searching page=num
+    # Skip numeric page navigation if bs_needed is false
     if bs_needed is False:
         numeric_success = False
         print("Skipping page navigation and going straight to button navigation...")
@@ -321,7 +374,7 @@ def get_all_pages(site_name, site_info, driver):
         except Exception as e:
             print("Failed to get links from base url.")
 
-        # Try going through pages on website using ?page=num or &page=num
+        # Try numeric page navigation (?page=num or &page=num)
         page = 1
         tried_first_pages = 0
         numeric_success = False
@@ -335,23 +388,25 @@ def get_all_pages(site_name, site_info, driver):
                     url = f"{base_url}?page={page}" 
                     print("Grabbing links from:", url)   
 
+                # get all links on page
                 page_links = get_all_links(url, driver, container=container) or [] # calling get_all_links function for link collection
                 page_links = filter_internal_links(page_links, base_url)
                 page_links_set = set(page_links)
-                new_links = page_links_set - all_links # Comparison between page_links_set and all_links to see if there are any new links
                 
-                # Stop pagination if no new links are found.
+                # comparison to see if new_links have been found
+                new_links = page_links_set - all_links 
+                
                 if not new_links: 
                     print("No new links found on page", page)
                     tried_first_pages += 1
 
-                    # If tried page=1 or 2 and got nothing, stop numeric pagination. Did 1 and 2 beacusse some websites start at page=2 and some start at page =1
+                    # If tried page=1 or 2 and got nothing, stop numeric pagination. Did 1 and 2 because some websites start at page=2 and some start at page =1
                     if tried_first_pages >= 2:
                         print("Numeric pagination produced no new links. Switching to button navigation. \n")
-                        all_links.clear() # wipe previously collected links, because we will need selenium to load the article_container in button navigation
+                        all_links.clear() # clear links before attempting selenium button based navigation
                         numeric_success = False
                         break
-                else: # Add all new_links to the all_links list, update will remove duplicates automatically
+                else:
                     all_links.update(new_links)
                     numeric_success = True
                     print("Found", len(new_links), " new links on", url)
@@ -363,8 +418,7 @@ def get_all_pages(site_name, site_info, driver):
                 print("Error occured when trying to do numerical page=num page search on:", page)
                 break
                 
-
-    # If going through pages fails, try finding a button and using it (Next, View More, Load More).
+    # If numerical page navigation fails, try doing button navigation with selenium
     if not numeric_success and nav_button:
         try:
             print("Trying button navigation for", base_url, "...")
@@ -377,21 +431,18 @@ def get_all_pages(site_name, site_info, driver):
             click_count = 0 # track how many button clicks have been done
             last_url = driver.current_url
             no_new_count = 0 # counts how many times no new articles were returned after a button click.
-            
+            one_link_count = 0 # counts how many repetitive times only one link has been found.
             button_count = 0 # for testing, when I dont wanna run through a whole website. 
-            one_link_count = 0 # used to count how many times only one link has been found repetively
-
+            
             while True: # loop until there are no more new links or buttons
                 try: 
-                    
-                    # reload if url changes
+                    # reload if url changes (reload was causing some sites to reset to home page)
                     reload_needed = driver.current_url != last_url
-                    page_links = get_links_sel(driver.current_url, driver, reload=reload_needed, container=container)  # reload was causing some sites to reset to home page
+                    page_links = get_links_sel(driver.current_url, driver, reload=reload_needed, container=container)  
                     page_links = filter_internal_links(page_links, base_url)
-
                     # only keep new links
                     page_links_set = set(page_links)
-                    new_links = page_links_set - all_links # Comparison between page_links_set and all_links to see if there are any new links
+                    new_links = page_links_set - all_links 
 
                     if new_links: 
                         all_links.update(new_links) # add the new links to all_links 
@@ -406,8 +457,8 @@ def get_all_pages(site_name, site_info, driver):
                     else: 
                         print("No new links found on current page.")
 
+                    # find and click the pagination button
                     print("Checking for a button on:", driver.current_url)
-                    # look for the button
                     button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, nav_button)))
                     print("Button found...")
                     driver.execute_script("arguments[0].scrollIntoView(true);", button)
@@ -418,7 +469,7 @@ def get_all_pages(site_name, site_info, driver):
 
                     last_url = driver.current_url
 
-                    # if no new links after at least 2 clicks, stop
+                    # stop if no new links after 2 clicks
                     if len(all_links) == prev_count:
                         no_new_count += 1
                         print("No new links found.")
@@ -438,9 +489,9 @@ def get_all_pages(site_name, site_info, driver):
                     -------------------------------------------------------------------------------------
                     '''
                     button_count += 1
-                    if button_count > 2:
-                        print("Stopping since max amount of button presses has been reached for testing purposes.")
-                        break
+                    #if button_count > 0:
+                        #print("Stopping since max amount of button presses has been reached for testing purposes.")
+                        #break
 
                 except TimeoutException:
                     print("No more Next/Load More buttons found. Stopping button navigation.")
@@ -454,128 +505,179 @@ def get_all_pages(site_name, site_info, driver):
     return list(all_links)
 
 
-# ------------------------------------------------------------------------------------------------
-#                                  FUNCTIONS: ALZHEIMERS FILTERING
-# ------------------------------------------------------------------------------------------------
-
+# ==========================================================================================
+#                          FUNCTIONS : HTML SAVING AND ALZHEIMERS FILTERING
+# ==========================================================================================
 '''
-* function_identifier: find_alz_articles
-* summary: Search through all collected links and find all articles relating to alzheimers.
+* function_identifier: save_html
+* summary: saves an HTML for a single URL (site_folder/<file_number>.html)
+* parameters:
+    - driver: selenium webdriver (used if BS fails)
+    - url: the web page URL to save
+    - site_folder: folder where HTML files will be saved
+    - file_number: number used to create the HTML file name (ex. '1.html')
+    - cookie_button: optional path to cookies accept button
+    - url_map: optional dictionary to map file_number to URL for reference
+    - html_sel_save: boolean that is True if BS needs to be skipped.
+* returns: file path of saved html, or None if failed.
 '''
-def find_alz_articles(driver, links, cookie_button=None): #using beautiful soup first, then selenium. Was originally only using selenium. 
-    alz_article_links = [] # will store all link that have any desired key words (ex.alzheim)
-    bs_matches = 0 # will be used to output how many matches were found using beautiful soup
-    sel_matches = 0 # will be used to output how many matches were found using selenium
-    print("Checking articles for Alzheimer's related content...")
+def save_html(driver, url, site_folder, file_number, cookie_button=None, url_map=None, html_sel_save=None):
+    # creating folder if it does not already exist
+    if not os.path.exists(site_folder):
+        os.makedirs(site_folder)
 
-    '''
-    ------------------------------------------------------------------------------
-    FOR TESTING PURPOSES ONLY REMOVE THIS FOR FINAL PRODUCT
-    ------------------------------------------------------------------------------
-    '''
-    links_attempted_counter = 0
-    '''
-    -------------------------------------------------------------------------------
-    '''
+    # defining the HTML file path
+    html_filename = str(file_number) + ".html"
+    file_path = os.path.join(site_folder, html_filename)
 
-    for link in links: 
-        links_attempted_counter += 1
-        found = False # for tracking if Alzheimer's keyword is found.
+    # tells code whether to use BS or Sel
+    use_requests = not bool(html_sel_save)
 
-        # First try beautifulsoup
-        try:
-            r = requests.get(link, timeout=10)
+    if use_requests:    
+        # try using BeautifulSoup to create HTML
+        try: 
+            r = requests.get(url, timeout=10)
             time.sleep(3)
             soup = BeautifulSoup(r.text, "html.parser")
-            page_text = soup.get_text().lower() # grabbing all text in lower case
-            try:
-                if "alzheim" in page_text:
-                    alz_article_links.append(link)
-                    bs_matches += 1
-                    found = True
-            except Exception as e:
-                print("Error checking BS text for keyword(s) in link:", link)
+            html_content = soup.prettify()
+
+            # save HTML
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            
+            # updating url_map so that url can stay associated with .html
+            if url_map is not None:
+                url_map[file_number] = url
+
+            return file_path
         except Exception as e:
-            print("Failed to get page with BS for:",link)
+            pass
 
-        # Last resort : try selenium  
-        if not found:
+    # fallback on selenium if bs fails
+    try:
+        driver.get(url)
+        time.sleep(2)
+
+        if cookie_button:
             try:
-                try:  
-                    driver.get(link)
-                    time.sleep(1)
+                cookies_handler(driver, cookie_button)
+            except:
+                pass
+        
+        # waiting for body element to load
+        try:
+            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(2)
+        except Exception as e:
+            return None
+            print("Body element not detected for", url)
+        
+        # scrolling page because some JS heavy sites require scrolling to load all elements
+        scroll_height = driver.execute_script("return document.body.scrollHeight")
+        current_height = 0
+        while current_height < scroll_height:
+            driver.execute_script("window.scrollTo(0, " + str(current_height) + ");")
+            time.sleep(1)
+            current_height += 600
+            scroll_height = driver.execute_script("return document.body.scrollHeight")
+        time.sleep(1)
 
-                    #handle cookies popup if present
-                    if cookie_button:
-                        cookies_handler(driver, cookie_button, timeout=5)
-                
-                except Exception as e:
-                    print("Unable to open", link, "with driver for keyword(s) analysis...")
-                    print("Exception:", e)
+        # Get fully rendered DOM
+        html_content = driver.execute_script("return document.documentElement.outerHTML;")
 
-                # Wait until body is present then grab the body and extract the text
-                try:
-                    body_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
-                    body_text = body_element.text.lower()
-                except TimeoutException:
-                    body_text = ""
-                    print("Error retrieving body for keyword(s) analysis using Selenium...")
+        # save HTML
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
 
-                # getting title text
-                try:
-                    title_text = driver.title.lower() # gets text inside <title> to extract title
-                except Exception as e:
-                    print("Error retrieving title for keyword(s) analysis using Selenium...")
+        # updating url_map so that url can stay associated with .html
+        if url_map is not None:
+            url_map[file_number] = url
+        
+        return file_path
 
-                #checking to see if alzheim is in the body or title text. If so, append the link.
-                try:
-                    if "alzheim" in body_text or "alzheim" in title_text:
-                        alz_article_links.append(link)
-                        sel_matches += 1
-                except Exception as e:
-                    print("Unable to add keyword(s) link to alz_article_links.")
+    except Exception as e:
+        print("Beautiful Soup and Selenium failed when trying to make a .html for:", url)
+        return None      
 
+    
+'''
+* function_identifier: find_alz_articles
+* summary: Check all saved HTML files in a site folder for keyword(s). Delete file and remove from dictionary if keyword not found.
+* parameters: 
+    - site_folder: folder containing saved HTML files.
+    - url_map: dictionary mapping file_number to URL for all saved HTML files.
+* returns: dictionary of filtered articles {file_number:url} containing the keyword(s)
+* note: starting html saves here because this is the first time article links are opened and read. 
+'''
+def find_alz_articles(site_folder, url_map): 
+    alz_html_url = {}
+    
+    if not os.path.exists(site_folder):
+        print("Site folder does not exist:", site_folder)
+        return {}
+    
+    # loop through all HTML files in the folder
+    for html_filename in os.listdir(site_folder):
+        if not html_filename.endswith(".html"):
+            continue
+
+        file_number = int(html_filename.replace(".html", ""))
+        file_path = os.path.join(site_folder, html_filename)
+
+        try:
+            # read HTML file and extract text
+            with open(file_path, "r", encoding="utf-8") as f:
+                soup = BeautifulSoup(f, "html.parser")
+            page_text = soup.get_text().lower()
+
+            # keep file if keyword(s) found; otherwise delete
+            if "alzheim" in page_text:
+                alz_html_url[file_number] = url_map.get(file_number, "URL not found")
+            else:
+                os.remove(file_path)
+                if file_number in url_map:
+                    del url_map[file_number] 
+
+        except Exception as e:
+            print("Error occured when searching HTML for keyword:", file_path)
+            # try to remove file and url_map entry if an error occured when searching html
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                if file_number in url_map:
+                    del url_map[file_number]
             except Exception as e:
-                print("Failed to get page with Selenium for:", link)
-                continue
+                pass
+            continue
 
-        '''
-        ------------------------------------------------------------------------------
-        FOR TESTING PURPOSES ONLY REMOVE THIS FOR FINAL PRODUCT
-        ------------------------------------------------------------------------------
-        '''
-        if links_attempted_counter > 9:
-            print("Stopping because max number of links for testing (", links_attempted_counter,") have been searched for keyword 'alzheim'.")
-            break
-        '''
-        -------------------------------------------------------------------------------
-        '''
-
-    print("Links with Alzheimer content found using BeautifulSoup:", bs_matches)
-    print("Links with Alzheimer content found using Selenium:", sel_matches)
-    return alz_article_links
-
-
-
+    return alz_html_url
+                                       
 
 # ------------------------------------------------------------------------------------------------
 #                                 FUNCTIONS: PDF CREATION FUNCTIONS
 # ------------------------------------------------------------------------------------------------
 ''' 
 * function_identifier: cookies_handler
-* parameters: Uses selenium driver to look for common cookie consent popups and clicks the accept button.
+* summary: Uses selenium driver to look for common cookie consent popups and clicks the accept button.
+* parameters: 
+    - driver: selenium webdriver
+    - cookie_xpath: XPath for the cookie accept button
+* return: true if cookie button was found and clicked. Otherwise, false.
 '''
-def cookies_handler(driver, cookie_xpath, timeout=5):
+def cookies_handler(driver, cookie_xpath):
+    # if no xpath, do nothing
     if not cookie_xpath:
         return False
     
     try:
-        cookie_button = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, cookie_xpath)))
+        # wait for cookies button to be clickable
+        cookie_button = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, cookie_xpath)))
+        # scroll button into view and click
         driver.execute_script("arguments[0].scrollIntoView(true);", cookie_button)
         time.sleep(1)
         cookie_button.click()
         print("Accepted cookies.") 
-        time.sleep(1) # giving page time to load without cooke consent popup
+        time.sleep(1) # giving page time to load without cookie consent popup
         return True
     except Exception as e:
         #print("No cookie popup found")
@@ -584,34 +686,38 @@ def cookies_handler(driver, cookie_xpath, timeout=5):
     
 ''' 
 * function_identifier: add_pdf_detail
-* parameters: Uses selenium driver to open the article and saves the full webpage as a pdf. Then adds the PDF path to the article details dictionary.
-* returns the site specific details dictionary with a new 'PDF LINK'column.
+* summary: Uses selenium driver to open the article and saves the full webpage as a pdf. Then adds the PDF path to the article details dictionary.
+* parameters: 
+    - driver: selenium webdriver
+    - details: dictionary containing article details
+    - folder: folder to save PDF files to
+    - cookie_xpath: optional xpath for a cookie consent button
+* return: the site specific details dictionary with a new 'PDF LINK' column.
 '''
 def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None):
     try:
         url = details.get("URL", "")
-
         if not url:
             print("No URL found for this article")
-            details["PDF LINK"] = "No URL found"
+            details["PDF PATH"] = "No URL found"
             return details
         
-        # Checking to see if a folder exists. If not create one.
+        # checking to see if a folder exists. If not create one.
         try:
             if not os.path.exists(folder):
                 os.makedirs(folder)
         except Exception as e:
-            details["PDF LINK"] = "Folder Creation Failed"
+            details["PDF PATH"] = "Folder Creation Failed"
             return details
         
-        # if cookies is there accept pop up
+        # accept cookie popup if XPath is provided
         try:
             if cookie_xpath:
                 cookies_handler(driver, cookie_xpath)
         except Exception as e:
             print("No cookie popup found. Continuing...")
 
-        # Resizing the browser window so that it fits the entire page
+        # resizing the browser window so that it fits the entire page
         try:
             total_width = driver.execute_script("return document.documentElement.scrollWidth")
             total_height = driver.execute_script("return document.documentElement.scrollHeight")
@@ -619,67 +725,66 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
         except Exception as e:
             print("Could not resize window for", url)
 
-        # Taking a screenshot of webpage
+        # taking a screenshot of webpage
         try:
             screenshot_path = os.path.join(folder, "temp_screenshot.png")
             driver.save_screenshot(screenshot_path) # saves screenshot as PNG
         except Exception as e:
-            details["PDF LINK"] = "Screenshot failed"
+            details["PDF PATH"] = "Screenshot failed"
             return details
         
-        # Convert screenshot to a pdf
+        # convert screenshot to RGB if needed
         try: 
             image = Image.open(screenshot_path)
-            if image.mode != "RGB": # Converting to RGB because PDFs require thius format
+            if image.mode != "RGB": # Converting to RGB because PDFs require this format
                 image = image.convert("RGB")
         except Exception as e:
-            details["PDF LINK"] = "Image conversion failed."
+            details["PDF PATH"] = "Image conversion failed."
             return details
         
-        # Naming file based off of the page title
+        # creating a unique file name whether it be based of article title or timestamp
         try:
             article_title = details.get("TITLE")
-            # Fallback in case title was unable to be pulled from a get_details function
+            # fallback in case title was unable to be pulled from a get_details function
             if article_title == "N/A":
-                # output webpage + currentmonth, day, and time as HHMMSS
                 now = datetime.now()
                 time_marker = now.strftime("%m%d_%H%M%S") #MMDD_HHMMSS 
-                article_title = f"webpage_{time_marker}"
+                article_title = "webpage_"+time_marker
 
-            # Removing characters that are not allowed in filenames
+            # removing characters that are not allowed in filenames
             clean_title = re.sub(r'[\\/*?:"<>|]', "", article_title[:60])
             file_path = os.path.join(folder, clean_title + ".pdf")
         except Exception as e:
             print("Problem creating filename for", url)
 
-        # Save the image as a PDF
+        # saving image as PDF
         try:
             image.save(file_path, "PDF", resolution = 100.0)
         except Exception as e:
-            details["PDF LINK"] = "PDF save failed"
+            details["PDF PATH"] = "PDF save failed"
             return details
         
-        # Remove temporary screenshot, since image has been saved as a PDF
+        # remove temporary screenshot, since image has been saved as a PDF
         try:
             if os.path.exists(screenshot_path):
                 os.remove(screenshot_path)
         except Exception as e:
             print("Unable to delete temporary screenshot.")
 
+        # getting the full path to where the pdf is stored
         try:
-            # Getting the full path to where the pdf is stored
             absolute_path = os.path.abspath(file_path)
         except Exception as e:
             print("Unable to get absolute path.")
             details["PDF_LINK"] = "Path Error" 
             return details
 
-        details["PDF LINK"] = absolute_path
+        details["PDF PATH"] = absolute_path
         #print ("Saved PDF for:" + article_title)
 
     except Exception as e:
         print("Failed to create PDF for" + details.get("URL"))
-        details["PDF LINK"] = "PDF generation failed"
+        details["PDF PATH"] = "PDF generation failed"
 
     #print("PDF has been created.")
     return details
@@ -692,15 +797,17 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
 '''
 * function_identifier: get_acadia_pharm_inc_details
 * parameters: this is designed to scrape the details from articles on https://acadia.com/en-us/media/news-releases that were found to have the keyword "alzheim."
-* note: no authors listed on site. Details were successfully pulled using BS. No sel needed.
+* note: no authors listed on site. 
 '''
-def get_acadia_pharm_inc_details(driver, link, cookie_button=None):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}   
-    
+def get_acadia_pharm_inc_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
+
     # try using BS
     try:
-        r = requests.get(link, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
+        # Open the save HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # grabbing publisher
         details["PUBLISHER"] = "ACADIA Pharmaceuticals Inc."
@@ -721,7 +828,6 @@ def get_acadia_pharm_inc_details(driver, link, cookie_button=None):
         except Exception as e:
             details["PUBLISH DATE"] = "N/A"
 
-
         # grabbing author(s), there are no authors on this site.
         details["AUTHOR(S)"] = "N/A"
 
@@ -741,7 +847,7 @@ def get_acadia_pharm_inc_details(driver, link, cookie_button=None):
             details["BODY"] = "N/A"
         
     except Exception as e:
-        print("Beautifulsoup extraction not fully successful.") 
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url) 
 
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
@@ -754,12 +860,14 @@ def get_acadia_pharm_inc_details(driver, link, cookie_button=None):
 * parameters: this is designed to scrape the details from articles on https://investors.alnylam.com/press-releases that were found to have the keyword "alzheim."
 * note: No authors. BS Found title, publish date, and body.
 '''
-def get_aliada_details(driver, link, cookie_button=None):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
+def get_aliada_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
 
     try:
-        r = requests.get(link, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
+        # Open the save HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # grabbing publisher
         details["PUBLISHER"] = "Aliada Therapuetics"
@@ -767,8 +875,8 @@ def get_aliada_details(driver, link, cookie_button=None):
         # grabbing title
         try:
             title_element = soup.find("h2", class_=["press-d-title", "mt-0"])
-            if title_element: #continues if title_element is not empty
-                details["TITLE"] = title_element.text.strip() #strip gives a clean output
+            if title_element: # continues if title_element is not empty
+                details["TITLE"] = title_element.text.strip() # strip gives a clean output
         except Exception as e:
             details["TITLE"] = "N/A"
 
@@ -800,7 +908,7 @@ def get_aliada_details(driver, link, cookie_button=None):
             details["BODY"] = "N/A"
         
     except Exception as e:
-        print("Beautifulsoup extraction not fully successful.") 
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url) 
 
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
@@ -811,46 +919,61 @@ def get_aliada_details(driver, link, cookie_button=None):
 '''
 * function_identifier: get_adel_details
 * parameters: this is designed to scrape the details from articles on https://www.alzinova.com/investors/press-releases/ that were found to have the keyword "alzheim."
-* note: No details were found using BS, removed that section. ADEL does not have publishers or authors on articles.
+* note: ADEL does not have publishers or authors on articles.
 '''
-def get_adel_details(driver, link, cookie_button=None):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
+def get_adel_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
 
-    # Using selenium only because beautifulsoup returned no details.
     try:
-        driver.get(link)
-        time.sleep(2)
-        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
+        # Open the save HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # Site has no publishers
         details["PUBLISHER"] = "Alzheimer's Disease Expert Lab (ADEL), Inc."
-        # Site has no authors
-        details["AUTHOR(S)"] = "N/A"
 
         # grabbing title
         try:
-            title_element = driver.find_element(By.CLASS_NAME, "mfn-title")
-            details["TITLE"] = title_element.text.strip()
-        except:
+            title_element = soup.find(class_="mfn-title")
+            if title_element: 
+                details["TITLE"] = title_element.get_text(strip=True) # strip gives a clean output
+            else:
+                details["TITLE"] = "N/A"
+        except Exception as e:
             details["TITLE"] = "N/A"
 
         # grabbing publish date
         try:
-            date_element = driver.find_element(By.CLASS_NAME, "mfn-date")
-            details["PUBLISH DATE"] = date_element.text.strip()
-        except:
+            date_element = soup.find(class_="mfn-date")
+            if date_element: 
+                details["PUBLISH DATE"] = date_element.get_text(strip=True)
+            else:
+                details["PUBLISH DATE"] = "N/A"
+        except Exception as e:
             details["PUBLISH DATE"] = "N/A"
-            
+
+        # Site has no authors
+        details["AUTHOR(S)"] = "N/A"
+
         # grabbing body
         try:
-            body_container = driver.find_element(By.CLASS_NAME, "mfn-body")
-            paragraphs = body_container.find_elements(By.TAG_NAME, "p")
-            details["BODY"] = "\n".join([p.text.strip() for p in paragraphs])
-        except:
+            body_container = soup.find(class_="mfn-body")
+            if body_container:
+                paragraphs = body_container.find_all("p")
+                all_text = []
+                for p in paragraphs:
+                    txt = p.get_text(strip=True)
+                    if txt:
+                        all_text.append(txt)
+                details["BODY"] = "\n".join(all_text)
+            else:
+                details["BODY"] = "N/A"
+        except Exception as e:
             details["BODY"] = "N/A"
 
     except Exception as e:
-        print("Selenium extraction failed for ADEL:", link)
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
     
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
@@ -861,15 +984,16 @@ def get_adel_details(driver, link, cookie_button=None):
 '''
 * function_identifier: get_alzheon_details
 * parameters: this is designed to scrape the details from articles on https://asceneuron.com/news-events/ that were found to have the keyword "alzheim."
-* note: BS always found title, publish date, and author(s) if they existed. Body was found using Selenium and BS. No publishers listed.
+* note: BS always finds title, publish date, and author(s) if they existed. No publishers listed.
 '''
-def get_alzheon_details(driver, link, cookie_button=None):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
+def get_alzheon_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
 
-    # try using beautifulsoup first
     try:
-        r = requests.get(link, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
+        # Open the save HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # grabbing publisher
         details["PUBLISHER"] = "Alzheon Inc."
@@ -916,33 +1040,8 @@ def get_alzheon_details(driver, link, cookie_button=None):
             details["BODY"] = "N/A"
 
     except Exception as e:
-        print("Beautifulsoup extraction not fully successful. Switching to Selenium for further analysis.")
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
 
-    # using selenium for body if beautifulsoup fails on body extraction.
-    if not details["BODY"]:
-        try:
-            driver.get(link)
-            time.sleep(2)
-            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
-
-            # grabbing body
-            if not details["BODY"]:
-                try:
-                    body_blocks = driver.find_elements(By.CSS_SELECTOR, "div.et_pb_text_inner")
-                    all_text = []
-                    for block in body_blocks:
-                        paragraphs = block.find_elements(By.TAG_NAME, "p")
-                        for p in paragraphs:
-                            txt = p.text.strip()
-                            if txt:
-                                all_text.append(txt)
-                    details["BODY"] = "\n".join(all_text)
-                except:
-                    details["BODY"] = "N/A"
-
-        except Exception as e:
-            print("Unable to locate all metadata for Alzheon Inc:", link)
-    
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
 
@@ -952,39 +1051,39 @@ def get_alzheon_details(driver, link, cookie_button=None):
 '''
 * function_identifier: get_alz_research_uk_details
 * parameters: this is designed to scrape the details from articles on https://www.alzheimersresearchuk.org/about-us/latest/news/ that were found to have the keyword "alzheim."
-* note: Nothing was successfully pulled using BS. Used Selenium only.
 '''
-def get_alz_research_uk_details(driver, link, cookie_button=None):
-    details = {"PUBLISHER": "", "TITLE": "", "URL": link, "PUBLISH DATE": "", "AUTHOR(S)": "", "PDF LINK": "", "BODY": ""}
+def get_alz_research_uk_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
 
     # using selenium since BeautifulSoup returned nothing
     try:
-        try:
-            driver.get(link)
-            time.sleep(2)
-            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body"))) # waiting for elements to load
-        except Exception as e:
-            print("Selenium driver failed to get Alzheimer's Research UK link:", link)
+        # Open the saved HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # grabbing publisher
         details["PUBLISHER"] = "Alzheimer's Research UK"
         
         # grabbing title
         try:
-            title_element = driver.find_element(By.CSS_SELECTOR, "h1.fl-heading")
-            details["TITLE"] = title_element.text.strip() # strip gives a clean output
+            title_element = soup.select_one("h1.fl-heading")
+            if title_element:
+                details["TITLE"] = title_element.text.strip() # strip gives a clean output
+            else:
+                details["TITLE"] = "N/A"
         except Exception as e:
             details["TITLE"] = "N/A"
 
         # grabbing author and publish date
         try:
-            date_elements = driver.find_elements(By.CSS_SELECTOR, "div.fl-rich-text")
+            date_elements = soup.select("div.fl-rich-text")
             author = "N/A"
             publish_date = "N/A"
 
             for date_element in date_elements:
                 try:
-                    p_tag = date_element.find_element(By.TAG_NAME, "p")
+                    p_tag = date_element.find("p")
                     if p_tag: # getting text inside <p> tag, ex. "By Alzheimer's Research UK | Friday 25 July 2025"
                         text = p_tag.text.strip()
                         if "|" in text or "by " in text.lower(): # splitting text into two parts. Before and after "\"
@@ -1010,19 +1109,19 @@ def get_alz_research_uk_details(driver, link, cookie_button=None):
             details["PUBLISH DATE"] = publish_date
 
         except Exception as e:
-            print("Unable to extract author or publish date using Selenium on", link)
+            print("Unable to extract author or publish date using Selenium on", url)
             details["AUTHOR(S)"] = "N/A"
             details["PUBLISH DATE"] = "N/A"
 
         # grabbing body
         try: 
-            body_container = driver.find_elements(By.CSS_SELECTOR, "div.fl-module-content.fl-node-content")
+            body_container = soup.select("div.fl-module-content.fl-node-content")
             if body_container:
                 all_text = []
                 for block in body_container: # keeping body paragraph text
-                    paragraphs = block.find_elements(By.TAG_NAME, "p")
+                    paragraphs = block.find_all("p")
                     for p in paragraphs:
-                        txt = p.text.strip()
+                        txt = p.get_text(strip=True)
                         if txt:
                             all_text.append(txt)
                 details["BODY"] = "\n".join(all_text)
@@ -1030,7 +1129,7 @@ def get_alz_research_uk_details(driver, link, cookie_button=None):
             details["BODY"] = "N/A"
 
     except Exception as e:
-        print("Unable to locate all metadata for Alzheimer's Research UK:", link)
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
     
     # storing pdf version of site
     details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
@@ -1044,35 +1143,40 @@ def get_alz_research_uk_details(driver, link, cookie_button=None):
 def main():
     total_alz_links = 0
     total_links = 0
+    base_folder = "saved_sites" # folder that will store all htmls
+    os.makedirs(base_folder, exist_ok=True) # create folder if it does not exist
+    csv_file = "alz_articles.csv"
+    first_site = not os.path.exists(csv_file) # checking if CSV already exists. If no, add headers. If yes, just add site metadata.
 
     site_details = {
+        #working, has 641 first page links
+        "acadia_pharm_inc_url": { # ACADIA Pharmaceutical Inc.
+            "url": "https://acadia.com/en-us/media/news-releases",
+            "article_container": {"tag": "div", "class": "results"},
+            "nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
+            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            "bs_pagenav_flag": False,
+            "detail_getter": get_acadia_pharm_inc_details
+            }, 
         # working
-        #"acadia_pharm_inc_url": { # ACADIA Pharmaceutical Inc.
-            #"url": "https://acadia.com/en-us/media/news-releases",
-            #"article_container": {"tag": "div", "class": "results"},
-            #"nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
-            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_acadia_pharm_inc_details
-            #}, 
+        "aliada_th_url": { # Aliada Therapuetics
+            "url": "https://investors.alnylam.com/press-releases",
+            "article_container": {"tag": "div", "class": "financial-info-table"},
+            "nav_button": "//a[contains(@rel, 'next')]",
+            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            "bs_pagenav_flag": False,
+            "detail_getter": get_aliada_details
+            },
         # working
-        #"aliada_th_url": { # Aliada Therapuetics
-            #"url": "https://investors.alnylam.com/press-releases",
-            #"article_container": {"tag": "div", "class": "financial-info-table"},
-            #"nav_button": "//a[contains(@rel, 'next')]",
-            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_aliada_details
-            #},
-        # working
-        #"adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
-            #"url": "https://www.alzinova.com/investors/press-releases/",
-            #"article_container": {"tag": "div", "class": "mfn-content"},
-            #"nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
-            #"cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_adel_details
-            #},
+        "adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
+            "url": "https://www.alzinova.com/investors/press-releases/",
+            "article_container": {"tag": "div", "class": "mfn-content"},
+            "nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
+            "cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
+            "bs_pagenav_flag": False,
+            "html_sel_save": True,
+            "detail_getter": get_adel_details
+            },
         # working
         "alzheon_inc_url": { # Alzheon Inc
             "url": "https://asceneuron.com/news-events/",
@@ -1080,31 +1184,35 @@ def main():
             "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
             "bs_pagenav_flag": False,
             "detail_getter": get_alzheon_details
-            }
+            },
         # working
-        # found no alz_articles with BS, only sel.
-        #"alz_research_uk_url": { # Alzheimer's Research UK 
-            #"url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
-            #"article_container": {"tag": "div", "class": "pp-content-posts"},
-            #"nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
-            #"cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_alz_research_uk_details
-            #},
+        "alz_research_uk_url": { # Alzheimer's Research UK 
+            "url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
+            "article_container": {"tag": "div", "class": "pp-content-posts"},
+            "nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
+            "cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
+            "bs_pagenav_flag": False,
+            "html_sel_save": True,
+            "detail_getter": get_alz_research_uk_details
+            }
     }
     
-    
-    all_article_details = []
-
+    # looping through each site in site_details
     for site_name, site_info in site_details.items():
+        # creting a site folder for html storage.
+        try:
+            site_folder = os.path.join(base_folder, site_name)
+            os.makedirs(site_folder, exist_ok=True)
+        except Exception as e:
+            print("Unable to find/create site folder for", site_name)
+
         base_url = site_info["url"]
         print("\n-------------------------------------------------------------------------------------------------------------")
-        
-        print("Setting up driver....")
+        print("Setting up Selenium driver for", base_url, ".... ")
         driver = setup_driver()
 
         try:
-            # Get all Pages
+            # Get all links from site
             try:
                 links = get_all_pages(site_name, site_info, driver)
                 print("\nTotal number of links found on", base_url, ":", len(links))
@@ -1112,33 +1220,50 @@ def main():
             except Exception as e:
                 continue
             
+            # Saving HTML files for found links, one at a time
+            print("Attempting to save HTMLS for all links found on", site_name, "...")
+            url_map = {} # {file_number:url}
+            for idx, link in enumerate(links, start=1):
+                save_html(driver, link, site_folder, idx, cookie_button=site_info.get("cookie_button"), url_map=url_map, html_sel_save=site_info.get("html_sel_save"))
             # Filter for Alzheimers related content
+            print("Searching site HTMLs for keyword(s)...")
             try:
-                alz_links = find_alz_articles(driver, links, cookie_button=site_info.get("cookie_button"))
-                total_alz_links += len(alz_links)
-                print("\nTotal number of Alzheimer's related links on this site: ", len(alz_links))
+                alz_html_url = find_alz_articles(site_folder, url_map)
+                total_alz_links += len(alz_html_url)
+                print("Total number of Alzheimer's related links on this site:", len(alz_html_url))
             except Exception as e:
                 continue
 
             # extracting article details
-            for link in alz_links:
-                article_data = site_details[site_name]["detail_getter"](driver, link, cookie_button=site_info.get("cookie_button"))
-                if article_data:
-                    all_article_details.append(article_data)
+            print("Extracting metadata from HTMLs that had the desired keyword(s)...")
+            site_article_details = []
+            for file_number, url in alz_html_url.items():
+                html_path = os.path.join(site_folder, str(file_number) + ".html")
+                try:
+                    article_data = site_info["detail_getter"](driver, html_path, url, cookie_button=site_info.get("cookie_button"))
+                    if article_data:
+                        site_article_details.append(article_data)
+                except Exception as e:
+                    print("Failed to extract metadata from", html_path)
+                    continue
+
+            # saving site metadata to csv
+            print("Saving sites metadata to a .csv file...")
+            if site_article_details:
+                try: 
+                    df = pd.DataFrame(site_article_details)
+                    df.to_csv(csv_file, mode='a', header=first_site, index=False)
+                    print("Saved results to", csv_file, ".")
+                    first_site = False
+                except Exception as e:
+                    print("Failed to save CSV file.")
+
         finally:
             driver.quit()
 
     print("\n-------------------------------------------------------------------------------------------------------------")
     print(total_links, "new article links found across all sponsor sites.")
     print(total_alz_links, "new alzheimer links found across all sponsor sites.\n")
-    
-    # Save results to CSV
-    try: 
-        df = pd.DataFrame(all_article_details)
-        df.to_csv("alz_articles.csv", index=False)
-        print("Saved results to alz_articles.csv")
-    except Exception as e:
-        print("Failed to save CSV file.")
     print("---------------------------------------------------------------------------------------------------------------")
 
 # ==========================================================================================
