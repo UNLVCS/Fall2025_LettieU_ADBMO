@@ -489,9 +489,9 @@ def get_all_pages(site_name, site_info, driver):
                     -------------------------------------------------------------------------------------
                     '''
                     button_count += 1
-                    #if button_count > 0:
-                        #print("Stopping since max amount of button presses has been reached for testing purposes.")
-                        #break
+                    if button_count > 1:
+                        print("Stopping since max amount of button presses has been reached for testing purposes.")
+                        break
 
                 except TimeoutException:
                     print("No more Next/Load More buttons found. Stopping button navigation.")
@@ -528,7 +528,7 @@ def save_html(driver, url, site_folder, file_number, cookie_button=None, url_map
 
     # defining the HTML file path
     html_filename = str(file_number) + ".html"
-    file_path = os.path.join(site_folder, html_filename)
+    html_path = os.path.join(site_folder, html_filename)
 
     # tells code whether to use BS or Sel
     use_requests = not bool(html_sel_save)
@@ -537,19 +537,19 @@ def save_html(driver, url, site_folder, file_number, cookie_button=None, url_map
         # try using BeautifulSoup to create HTML
         try: 
             r = requests.get(url, timeout=10)
-            time.sleep(3)
+            time.sleep(2)
             soup = BeautifulSoup(r.text, "html.parser")
             html_content = soup.prettify()
 
             # save HTML
-            with open(file_path, "w", encoding="utf-8") as f:
+            with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
             
             # updating url_map so that url can stay associated with .html
             if url_map is not None:
                 url_map[file_number] = url
 
-            return file_path
+            return html_path
         except Exception as e:
             pass
 
@@ -586,14 +586,14 @@ def save_html(driver, url, site_folder, file_number, cookie_button=None, url_map
         html_content = driver.execute_script("return document.documentElement.outerHTML;")
 
         # save HTML
-        with open(file_path, "w", encoding="utf-8") as f:
+        with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
         # updating url_map so that url can stay associated with .html
         if url_map is not None:
             url_map[file_number] = url
         
-        return file_path
+        return html_path
 
     except Exception as e:
         print("Beautiful Soup and Selenium failed when trying to make a .html for:", url)
@@ -622,11 +622,11 @@ def find_alz_articles(site_folder, url_map):
             continue
 
         file_number = int(html_filename.replace(".html", ""))
-        file_path = os.path.join(site_folder, html_filename)
+        html_path = os.path.join(site_folder, html_filename)
 
         try:
             # read HTML file and extract text
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(html_path, "r", encoding="utf-8") as f:
                 soup = BeautifulSoup(f, "html.parser")
             page_text = soup.get_text().lower()
 
@@ -634,16 +634,16 @@ def find_alz_articles(site_folder, url_map):
             if "alzheim" in page_text:
                 alz_html_url[file_number] = url_map.get(file_number, "URL not found")
             else:
-                os.remove(file_path)
+                os.remove(html_path)
                 if file_number in url_map:
                     del url_map[file_number] 
 
         except Exception as e:
-            print("Error occured when searching HTML for keyword:", file_path)
+            print("Error occured when searching HTML for keyword:", html_path)
             # try to remove file and url_map entry if an error occured when searching html
             try:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
+                if os.path.exists(html_path):
+                    os.remove(html_path)
                 if file_number in url_map:
                     del url_map[file_number]
             except Exception as e:
@@ -694,7 +694,7 @@ def cookies_handler(driver, cookie_xpath):
     - cookie_xpath: optional xpath for a cookie consent button
 * return: the site specific details dictionary with a new 'PDF LINK' column.
 '''
-def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None):
+def add_pdf_detail(driver, details, site_name=None, base_folder="saved_sites", cookie_xpath=None):
     try:
         url = details.get("URL", "")
         if not url:
@@ -702,10 +702,22 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
             details["PDF PATH"] = "No URL found"
             return details
         
+        # navigating to the articale page using Selenium
+        try:
+            driver.get(url)
+            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(2)
+        except Exception as e:
+            details["PDF PATH"] = "Failed to Load Page"
+            return details
+        
         # checking to see if a folder exists. If not create one.
         try:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
+            if site_name:
+                pdf_folder = os.path.join(base_folder, site_name + "_pdfs")
+            else:
+                pdf_folder = os.path.join(base_folder, "pdfs")
+            os.makedirs(pdf_folder, exist_ok=True)
         except Exception as e:
             details["PDF PATH"] = "Folder Creation Failed"
             return details
@@ -727,7 +739,7 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
 
         # taking a screenshot of webpage
         try:
-            screenshot_path = os.path.join(folder, "temp_screenshot.png")
+            screenshot_path = os.path.join(pdf_folder, "temp_screenshot.png")
             driver.save_screenshot(screenshot_path) # saves screenshot as PNG
         except Exception as e:
             details["PDF PATH"] = "Screenshot failed"
@@ -753,13 +765,13 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
 
             # removing characters that are not allowed in filenames
             clean_title = re.sub(r'[\\/*?:"<>|]', "", article_title[:60])
-            file_path = os.path.join(folder, clean_title + ".pdf")
+            pdf_path = os.path.join(pdf_folder, clean_title + ".pdf")
         except Exception as e:
             print("Problem creating filename for", url)
 
         # saving image as PDF
         try:
-            image.save(file_path, "PDF", resolution = 100.0)
+            image.save(pdf_path, "PDF", resolution = 100.0)
         except Exception as e:
             details["PDF PATH"] = "PDF save failed"
             return details
@@ -771,15 +783,7 @@ def add_pdf_detail(driver, details, folder="alz_article_pdfs", cookie_xpath=None
         except Exception as e:
             print("Unable to delete temporary screenshot.")
 
-        # getting the full path to where the pdf is stored
-        try:
-            absolute_path = os.path.abspath(file_path)
-        except Exception as e:
-            print("Unable to get absolute path.")
-            details["PDF_LINK"] = "Path Error" 
-            return details
-
-        details["PDF PATH"] = absolute_path
+        details["PDF PATH"] = pdf_path
         #print ("Saved PDF for:" + article_title)
 
     except Exception as e:
@@ -850,7 +854,7 @@ def get_acadia_pharm_inc_details(driver, html_path, url, cookie_button=None):
         print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url) 
 
     # storing pdf version of site
-    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+    details = add_pdf_detail(driver, details, site_name = "acadia_pharm_inc", cookie_xpath=cookie_button)
 
     return details
 
@@ -911,7 +915,7 @@ def get_aliada_details(driver, html_path, url, cookie_button=None):
         print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url) 
 
     # storing pdf version of site
-    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+    details = add_pdf_detail(driver, details, site_name = "aliada_ther", cookie_xpath=cookie_button)
 
     return details
 
@@ -976,7 +980,7 @@ def get_adel_details(driver, html_path, url, cookie_button=None):
         print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
     
     # storing pdf version of site
-    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+    details = add_pdf_detail(driver, details, site_name = "adel_inc", cookie_xpath=cookie_button)
 
     return details
 
@@ -1043,7 +1047,7 @@ def get_alzheon_details(driver, html_path, url, cookie_button=None):
         print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
 
     # storing pdf version of site
-    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+    details = add_pdf_detail(driver, details, site_name = "alzheon_inc", cookie_xpath=cookie_button)
 
     return details
 
@@ -1132,7 +1136,7 @@ def get_alz_research_uk_details(driver, html_path, url, cookie_button=None):
         print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
     
     # storing pdf version of site
-    details = add_pdf_detail(driver, details, cookie_xpath=cookie_button)
+    details = add_pdf_detail(driver, details, site_name = "alz_reasearch_uk", cookie_xpath=cookie_button)
 
     return details
 
@@ -1146,62 +1150,63 @@ def main():
     base_folder = "saved_sites" # folder that will store all htmls
     os.makedirs(base_folder, exist_ok=True) # create folder if it does not exist
     csv_file = "alz_articles.csv"
-    first_site = not os.path.exists(csv_file) # checking if CSV already exists. If no, add headers. If yes, just add site metadata.
+    csv_path = os.path.join(base_folder, csv_file)
+    first_site = not os.path.exists(csv_path) # checking if CSV already exists. If no, add headers. If yes, just add site metadata.
 
     site_details = {
         #working, has 641 first page links
-        "acadia_pharm_inc_url": { # ACADIA Pharmaceutical Inc.
-            "url": "https://acadia.com/en-us/media/news-releases",
-            "article_container": {"tag": "div", "class": "results"},
-            "nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
-            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_acadia_pharm_inc_details
-            }, 
+        #"acadia_pharm_inc": { # ACADIA Pharmaceutical Inc.
+            #"url": "https://acadia.com/en-us/media/news-releases",
+            #"article_container": {"tag": "div", "class": "results"},
+            #"nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
+            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_acadia_pharm_inc_details
+            #}, 
         # working
-        "aliada_th_url": { # Aliada Therapuetics
-            "url": "https://investors.alnylam.com/press-releases",
-            "article_container": {"tag": "div", "class": "financial-info-table"},
-            "nav_button": "//a[contains(@rel, 'next')]",
-            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_aliada_details
-            },
+        #"aliada_th": { # Aliada Therapuetics
+            #"url": "https://investors.alnylam.com/press-releases",
+            #"article_container": {"tag": "div", "class": "financial-info-table"},
+            #"nav_button": "//a[contains(@rel, 'next')]",
+            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_aliada_details
+            #},
         # working
-        "adel_inc_url": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
-            "url": "https://www.alzinova.com/investors/press-releases/",
-            "article_container": {"tag": "div", "class": "mfn-content"},
-            "nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
-            "cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
-            "bs_pagenav_flag": False,
-            "html_sel_save": True,
-            "detail_getter": get_adel_details
-            },
+        #"adel_inc": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
+            #"url": "https://www.alzinova.com/investors/press-releases/",
+            #"article_container": {"tag": "div", "class": "mfn-content"},
+            #"nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
+            #"cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
+            #"bs_pagenav_flag": False,
+            #"html_sel_save": True,
+            #"detail_getter": get_adel_details
+            #},
         # working
-        "alzheon_inc_url": { # Alzheon Inc
+        "alzheon_inc": { # Alzheon Inc
             "url": "https://asceneuron.com/news-events/",
             "article_container": {"tag": "div", "class": "df-cpts-inner-wrap"},
             "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
             "bs_pagenav_flag": False,
             "detail_getter": get_alzheon_details
-            },
-        # working
-        "alz_research_uk_url": { # Alzheimer's Research UK 
-            "url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
-            "article_container": {"tag": "div", "class": "pp-content-posts"},
-            "nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
-            "cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
-            "bs_pagenav_flag": False,
-            "html_sel_save": True,
-            "detail_getter": get_alz_research_uk_details
             }
+        # working
+        #"alz_research_uk": { # Alzheimer's Research UK 
+            #"url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
+            #"article_container": {"tag": "div", "class": "pp-content-posts"},
+            #"nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
+            #"cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
+            #"bs_pagenav_flag": False,
+            #"html_sel_save": True,
+            #"detail_getter": get_alz_research_uk_details
+            #}
     }
     
     # looping through each site in site_details
     for site_name, site_info in site_details.items():
         # creting a site folder for html storage.
         try:
-            site_folder = os.path.join(base_folder, site_name)
+            site_folder = os.path.join(base_folder, site_name + "_htmls")
             os.makedirs(site_folder, exist_ok=True)
         except Exception as e:
             print("Unable to find/create site folder for", site_name)
@@ -1252,7 +1257,7 @@ def main():
             if site_article_details:
                 try: 
                     df = pd.DataFrame(site_article_details)
-                    df.to_csv(csv_file, mode='a', header=first_site, index=False)
+                    df.to_csv(csv_path, mode='a', header=first_site, index=False)
                     print("Saved results to", csv_file, ".")
                     first_site = False
                 except Exception as e:
