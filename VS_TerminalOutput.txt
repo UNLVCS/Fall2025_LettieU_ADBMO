@@ -1,235 +1,58 @@
-Started at 1:30 PM, ended at 2:20
-
-Failed after a two hour full run because I pressed ctrl+c to copy something from another page and it killed the terminal :( 
-Results from that run:
-Number of links collected from sites it worked on...
-Total number of links found on https://acadia.com/en-us/media/news-releases : 641
-Total number of links found on https://investors.alnylam.com/press-releases : 1465
-Total number of links found on https://www.alzinova.com/investors/press-releases/ : 179
-Total number of links found on https://asceneuron.com/news-events/ : 62
-
-
-TEST RUN TERMINAL OUTPUT (set max button clicks to 5, and max of 40 articles per site for 'alzheim' keyword search):
 -------------------------------------------------------------------------------------------------------------
-Setting up driver....
+Setting up Selenium driver for https://ir.cogrx.com/press-releases/ ....
 Installing ChromeDriver...
 
-DevTools listening on ws://127.0.0.1:62861/devtools/browser/cb1aa583-c151-4069-befe-7df11062d955  
+DevTools listening on ws://127.0.0.1:60920/devtools/browser/d12cd47e-1012-4b88-8f81-6e2a911d3849
 Driver setup complete!
 
-Checking https://acadia.com/en-us/media/news-releases for links.
-Skipping page navigation and going straight to button navigation...
-Trying button navigation for https://acadia.com/en-us/media/news-releases ...
+Checking https://ir.cogrx.com/press-releases/ for links.
+Skipping numerical page navigation and going straight to button navigation...
+Trying button navigation for https://ir.cogrx.com/press-releases/ ...
 Searching home page...
-Found 641 links overall on https://acadia.com/en-us/media/news-releases when using Selenium.
-Number of new links found: 641
+Found 7 links overall on https://ir.cogrx.com/press-releases/ when using Selenium.
+Number of new links found: 7
 
-Checking for a button on: https://acadia.com/en-us/media/news-releases
-No more Next/Load More buttons found. Stopping button navigation.
-
-Total number of links found on https://acadia.com/en-us/media/news-releases : 641
-Checking articles for Alzheimer's related content...
-Accepted cookies.
-Stopping because max number of links for testing ( 40 ) have been searched for keyword 'alzheim'.
-Links with Alzheimer content found using BeautifulSoup: 13
-Links with Alzheimer content found using Selenium: 0
-
-Total number of Alzheimer's related links on this site:  13
-
--------------------------------------------------------------------------------------------------------------
-Setting up driver....
-Installing ChromeDriver...
-
-DevTools listening on ws://127.0.0.1:51772/devtools/browser/f0d3d92a-f04a-4828-95a2-0f00decec13e  
-Driver setup complete!
-
-Checking https://investors.alnylam.com/press-releases for links.
-Skipping page navigation and going straight to button navigation...
-Trying button navigation for https://investors.alnylam.com/press-releases ...
-Searching home page...
-Found 18 links overall on https://investors.alnylam.com/press-releases when using Selenium.
-Number of new links found: 18
-
-Checking for a button on: https://investors.alnylam.com/press-releases
+Checking for a button on: https://ir.cogrx.com/press-releases/
 Button found...
-Found 18 links overall on https://investors.alnylam.com/press-releases when using Selenium.
-Number of new links found: 11
+Found 7 links overall on https://ir.cogrx.com/press-releases/?sf_paged=2 when using Selenium.
+Number of new links found: 7
 
-Checking for a button on: https://investors.alnylam.com/press-releases
-Button found...
-Found 19 links overall on https://investors.alnylam.com/press-releases when using Selenium.
-Number of new links found: 11
-
-Checking for a button on: https://investors.alnylam.com/press-releases
-Button found...
-Found 19 links overall on https://investors.alnylam.com/press-releases when using Selenium.
-Number of new links found: 11
-
-Checking for a button on: https://investors.alnylam.com/press-releases
-Button found...
-Found 19 links overall on https://investors.alnylam.com/press-releases when using Selenium.
-Number of new links found: 11
-
-Checking for a button on: https://investors.alnylam.com/press-releases
+Checking for a button on: https://ir.cogrx.com/press-releases/?sf_paged=2
 Button found...
 Stopping since max amount of button presses has been reached for testing purposes.
 
-Total number of links found on https://investors.alnylam.com/press-releases : 62
-Checking articles for Alzheimer's related content...
-Accepted cookies.
-Stopping because max number of links for testing ( 40 ) have been searched for keyword 'alzheim'.
-Links with Alzheimer content found using BeautifulSoup: 6
-Links with Alzheimer content found using Selenium: 0
-
-Total number of Alzheimer's related links on this site:  6
+Total number of links found on https://ir.cogrx.com/press-releases/ : 14
+Attempting to save HTMLS for all links found on cognition_ther ...
+Searching site HTMLs for keyword(s)...
+Total number of Alzheimer's related links on this site: 14
+Extracting metadata from HTMLs that had the desired keyword(s)...
+Saving sites metadata to a .csv file...
+Saved results to alz_articles.csv .
 
 -------------------------------------------------------------------------------------------------------------
-Setting up driver....
+Setting up Selenium driver for https://gemvax.com/bbs/board.php?bo_table=releases_en ....
 Installing ChromeDriver...
 
-DevTools listening on ws://127.0.0.1:54032/devtools/browser/9ee39eb8-ea15-4490-b719-587a40702150  
+DevTools listening on ws://127.0.0.1:62393/devtools/browser/6753d82a-eb14-43d3-b4f3-689df4642727
 Driver setup complete!
 
-Checking https://www.alzinova.com/investors/press-releases/ for links.
-Skipping page navigation and going straight to button navigation...
-Trying button navigation for https://www.alzinova.com/investors/press-releases/ ...
-Searching home page...
-Found 10 links overall on https://www.alzinova.com/investors/press-releases/ when using Selenium.
-Number of new links found: 10
+Checking https://gemvax.com/bbs/board.php?bo_table=releases_en for links.
+Skipping numerical page navigation and going straight to button navigation...
+Pagination is not needed for this site. Scraping links off home page...
+Found 13 links overall on https://gemvax.com/bbs/board.php?bo_table=releases_en when using Beautiful Soup.
+Found 13 links on home page.
 
-Checking for a button on: https://www.alzinova.com/investors/press-releases/
-Button found...
-Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=1 when using Selenium.
-Number of new links found: 10
-
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=1
-Button found...
-Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=2 when using Selenium.
-Number of new links found: 10
-
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=2
-Button found...
-Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=3 when using Selenium.
-Number of new links found: 10
-
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=3
-Button found...
-Found 10 links overall on https://www.alzinova.com/investors/press-releases/?page=4 when using Selenium.
-Number of new links found: 10
-
-Checking for a button on: https://www.alzinova.com/investors/press-releases/?page=4
-Button found...
-Stopping since max amount of button presses has been reached for testing purposes.
-
-Total number of links found on https://www.alzinova.com/investors/press-releases/ : 50
-Checking articles for Alzheimer's related content...
-Stopping because max number of links for testing ( 40 ) have been searched for keyword 'alzheim'.
-Links with Alzheimer content found using BeautifulSoup: 40
-Links with Alzheimer content found using Selenium: 0
-
-Total number of Alzheimer's related links on this site:  40
-Accepted cookies.
+Total number of links found on https://gemvax.com/bbs/board.php?bo_table=releases_en : 13
+Attempting to save HTMLS for all links found on gemvax_kael ...
+Searching site HTMLs for keyword(s)...
+Total number of Alzheimer's related links on this site: 11
+Extracting metadata from HTMLs that had the desired keyword(s)...
+Saving sites metadata to a .csv file...
+Saved results to alz_articles.csv .
 
 -------------------------------------------------------------------------------------------------------------
-Setting up driver....
-Installing ChromeDriver...
+27 new article links found across all sponsor sites.
+25 new alzheimer links found across all sponsor sites.
 
-DevTools listening on ws://127.0.0.1:50511/devtools/browser/0074f034-4731-478f-b8ad-4c6c2d063b0c  
-Driver setup complete!
-
-Checking https://asceneuron.com/news-events/ for links.
-Skipping page navigation and going straight to button navigation...
-Trying button navigation for https://asceneuron.com/news-events/ ...
-Searching home page...
-Found 14 links overall on https://asceneuron.com/news-events/ when using Selenium.
-Number of new links found: 14
-
-Checking for a button on: https://asceneuron.com/news-events/
-Button found...
-Found 27 links overall on https://asceneuron.com/news-events/ when using Selenium.
-Number of new links found: 13
-
-Checking for a button on: https://asceneuron.com/news-events/
-Button found...
-Found 39 links overall on https://asceneuron.com/news-events/ when using Selenium.
-Number of new links found: 12
-
-Checking for a button on: https://asceneuron.com/news-events/
-Button found...
-Found 51 links overall on https://asceneuron.com/news-events/ when using Selenium.
-Number of new links found: 12
-
-Checking for a button on: https://asceneuron.com/news-events/
-Button found...
-Found 62 links overall on https://asceneuron.com/news-events/ when using Selenium.
-Number of new links found: 11
-
-Checking for a button on: https://asceneuron.com/news-events/
-Button found...
-Stopping since max amount of button presses has been reached for testing purposes.
-
-Total number of links found on https://asceneuron.com/news-events/ : 62
-Checking articles for Alzheimer's related content...
-Stopping because max number of links for testing ( 40 ) have been searched for keyword 'alzheim'.
-Links with Alzheimer content found using BeautifulSoup: 25
-Links with Alzheimer content found using Selenium: 0
-
-Total number of Alzheimer's related links on this site:  25
-
--------------------------------------------------------------------------------------------------------------
-Setting up driver....
-Installing ChromeDriver...
-
-DevTools listening on ws://127.0.0.1:54178/devtools/browser/e840bd87-890d-437b-b9f5-f3237b20b0ab  
-Driver setup complete!
-
-Checking https://www.alzheimersresearchuk.org/about-us/latest/news/ for links.
-Skipping page navigation and going straight to button navigation...
-Trying button navigation for https://www.alzheimersresearchuk.org/about-us/latest/news/ ...       
-Searching home page...
-Found 26 links overall on https://www.alzheimersresearchuk.org/about-us/latest/news/ when using Selenium.
-Number of new links found: 26
-
-Checking for a button on: https://www.alzheimersresearchuk.org/about-us/latest/news/
-Button found...
-Found 50 links overall on https://www.alzheimersresearchuk.org/about-us/latest/news/ when using Selenium.
-Number of new links found: 25
-
-Checking for a button on: https://www.alzheimersresearchuk.org/about-us/latest/news/
-Button found...
-Found 75 links overall on https://www.alzheimersresearchuk.org/about-us/latest/news/ when using Selenium.
-Number of new links found: 25
-
-Checking for a button on: https://www.alzheimersresearchuk.org/about-us/latest/news/
-Button found...
-Found 100 links overall on https://www.alzheimersresearchuk.org/about-us/latest/news/ when using Selenium.
-Number of new links found: 25
-
-Checking for a button on: https://www.alzheimersresearchuk.org/about-us/latest/news/
-Button found...
-Found 125 links overall on https://www.alzheimersresearchuk.org/about-us/latest/news/ when using Selenium.
-Number of new links found: 25
-
-Checking for a button on: https://www.alzheimersresearchuk.org/about-us/latest/news/
-Button found...
-Stopping since max amount of button presses has been reached for testing purposes.
-
-Total number of links found on https://www.alzheimersresearchuk.org/about-us/latest/news/ : 126   
-Checking articles for Alzheimer's related content...
-Accepted cookies.
-Stopping because max number of links for testing ( 40 ) have been searched for keyword 'alzheim'.
-Links with Alzheimer content found using BeautifulSoup: 1
-Links with Alzheimer content found using Selenium: 39
-
-Total number of Alzheimer's related links on this site:  40
-
--------------------------------------------------------------------------------------------------------------
-941 new article links found across all sponsor sites.
-124 new alzheimer links found across all sponsor sites. #number would be higher if I let all 924 be search, only allowed 200
-
-Saved results to alz_articles.xlsx
 ---------------------------------------------------------------------------------------------------------------
-
-
-
 
