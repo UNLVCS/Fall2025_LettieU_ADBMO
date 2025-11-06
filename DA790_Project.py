@@ -363,7 +363,7 @@ def get_all_pages(site_name, site_info, driver):
     # Skip numeric page navigation if bs_needed is false
     if bs_needed is False:
         numeric_success = False
-        print("Skipping page navigation and going straight to button navigation...")
+        print("Skipping numerical page navigation and going straight to button navigation...")
     else: 
         # Checking base_url (home page) for links
         try:
@@ -375,7 +375,7 @@ def get_all_pages(site_name, site_info, driver):
             print("Failed to get links from base url.")
 
         # Try numeric page navigation (?page=num or &page=num)
-        page = 1
+        page = 0
         tried_first_pages = 0
         numeric_success = False
 
@@ -500,8 +500,18 @@ def get_all_pages(site_name, site_info, driver):
                     print("Error during button navigation.")
         
         except Exception as e:
-            print("Button navigation failed.")
+            print("Button navigation failed or Site has no buttons to be pressed.")
     
+    if not all_links:
+        print("Pagination is not needed for this site. Scraping links off home page...")
+        try:
+            home_links = get_all_links(base_url, driver, container=container)
+            home_links = filter_internal_links(home_links, base_url)
+            all_links.update(home_links)
+            print("Found", len(home_links), "links on home page.")
+        except Exception as e:
+            print("Failed to get links from home page as fallback:", e)
+
     return list(all_links)
 
 
@@ -1059,7 +1069,6 @@ def get_alzheon_details(driver, html_path, url, cookie_button=None):
 def get_alz_research_uk_details(driver, html_path, url, cookie_button=None):
     details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
 
-    # using selenium since BeautifulSoup returned nothing
     try:
         # Open the saved HTML file
         with open(html_path, "r", encoding="utf-8") as f:
@@ -1141,6 +1150,139 @@ def get_alz_research_uk_details(driver, html_path, url, cookie_button=None):
     return details
 
 
+'''
+* function_identifier: get_cognit_ther_details
+* parameters: this is designed to scrape the details from articles on https://ir.cogrx.com/press-releases/ that were found to have the keyword "alzheim."
+* notes: this site has no authors.
+'''
+def get_cognit_ther_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
+
+    try:
+        # Open the saved HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # grabbing publisher
+        details["PUBLISHER"] = "Cognition Therapeutics"
+        
+        # grabbing title
+        try:
+            title_element = soup.find("h1", class_="elementor-heading-title elementor-size-default")
+            if title_element:
+                details["TITLE"] = title_element.get_text(strip=True)
+            else:
+                details["TITLE"] = "N/A"
+        except Exception as e:
+            details["TITLE"] = "N/A"
+
+        # grabbing publish date
+        try:
+            date_element = soup.find("div", class_="pr-date-globe")
+            if date_element: # continues if date_element is not empty
+                details["PUBLISH DATE"] = date_element.get_text(strip=True)
+        except Exception as e:
+            details["PUBLISH DATE"] = "N/A"
+
+        # grabbing author(s) 
+        details["AUTHOR(S)"] = "N/A"
+
+        # grabbing body (there are multiple instances of elementor-widget-container, need to find the one storing body content.)
+        try:
+            containers = soup.find_all("div", class_="elementor-widget-container")
+            for container in containers:
+                if container.find("div", class_="pr-date-globe"):
+                    body_container = container
+                    break
+
+            if body_container:
+                paragraphs = body_container.find_all("p")  # grab all <p> tags in the container
+                all_text = []
+                for p in paragraphs:
+                    txt = p.get_text(strip=True)
+                    if txt:  # skip empty paragraphs
+                        all_text.append(txt)
+                details["BODY"] = "\n".join(all_text) if all_text else "N/A"
+            else:
+                details["BODY"] = "N/A"
+        except Exception as e:
+            details["BODY"] = "N/A"
+
+    except Exception as e:
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
+    
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, site_name = "congition_ther", cookie_xpath=cookie_button)
+
+    return details
+
+
+'''
+* function_identifier: get_gemvax_kael_details
+* parameters: this is designed to scrape the details from articles on https://gemvax.com/bbs/board.php?bo_table=releases_en that were found to have the keyword "alzheim."
+* notes: this site does not require any pagination and has no authors
+'''
+def get_gemvax_kael_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
+
+    try:
+        # Open the saved HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # grabbing publisher
+        details["PUBLISHER"] = "GemVax & Kael"
+
+        # grabbing title
+        try:
+            title_element = soup.find("span", class_="bo_v_tit")
+            if title_element:
+                details["TITLE"] = title_element.get_text(strip=True)
+            else:
+                details["TITLE"] = "N/A"
+        except Exception as e:
+            details["TITLE"] = "N/A"
+        
+        # grabbing publish date
+        try:
+            date_element = soup.find("strong", class_="if_date")
+            if date_element: # continues if date_element is not empty
+                full_text = date_element.get_text(strip=True)
+                details["PUBLISH DATE"] = full_text.replace("작성일", "").strip()
+        except Exception as e:
+            details["PUBLISH DATE"] = "N/A"
+
+        # grabbing author(s) 
+        details["AUTHOR(S)"] = "N/A"
+
+        # grabbing body
+        try:
+            body_container = soup.find("div", class_="r-sub-con")
+            all_text = []
+
+            if body_container:
+                for p in body_container.find_all("p"):  # find all <p> recursively
+                    span = p.find("span", lang="EN-US")
+                    if span and span.get_text(strip=True):
+                        all_text.append(span.get_text(strip=True))
+                    elif p.get_text(strip=True):  # fallback to any <p> text if span not found
+                        all_text.append(p.get_text(strip=True))
+
+            details["BODY"] = "\n".join(all_text) if all_text else "N/A"
+        except Exception as e:
+            details["BODY"] = "N/A"
+
+    except Exception as e:
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
+    
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, site_name = "gemvax_kael", cookie_xpath=cookie_button)
+
+    return details
+
+
 # ==========================================================================================
 #                                 MAIN FUNCTION
 # ==========================================================================================
@@ -1183,13 +1325,13 @@ def main():
             #"detail_getter": get_adel_details
             #},
         # working
-        "alzheon_inc": { # Alzheon Inc
-            "url": "https://asceneuron.com/news-events/",
-            "article_container": {"tag": "div", "class": "df-cpts-inner-wrap"},
-            "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
-            "bs_pagenav_flag": False,
-            "detail_getter": get_alzheon_details
-            }
+        #"alzheon_inc": { # Alzheon Inc
+            #"url": "https://asceneuron.com/news-events/",
+            #"article_container": {"tag": "div", "class": "df-cpts-inner-wrap"},
+            #"nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_alzheon_details
+            #},
         # working
         #"alz_research_uk": { # Alzheimer's Research UK 
             #"url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
@@ -1199,7 +1341,26 @@ def main():
             #"bs_pagenav_flag": False,
             #"html_sel_save": True,
             #"detail_getter": get_alz_research_uk_details
-            #}
+            #},
+        # working 
+        # could possibly use numeric page navigation. Just need to click next once, then flip thorugh pages numerically
+        "cognition_ther": { # Cognition Therapeutics
+            "url": "https://ir.cogrx.com/press-releases/",
+            "article_container": {"tag": "div", "class": "lsc-sf-container"},
+            "nav_button": "//a[@rel='next']",
+            "cookie_button": None,
+            "bs_pagenav_flag": False,
+            "detail_getter": get_cognit_ther_details
+            },
+        # not working yet, links are only on a home page, no pagination needed.
+        "gemvax_kael": { # GemVax & Kael
+            "url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
+            "article_container": {"tag": "div", "class": "bo_list"},
+            "nav_button": None,
+            "cookie_button": None,
+            "bs_pagenav_flag": False,
+            "detail_getter": get_gemvax_kael_details
+        }
     }
     
     # looping through each site in site_details
