@@ -2,7 +2,7 @@
 Setting up Selenium driver for https://ir.cogrx.com/press-releases/ ....
 Installing ChromeDriver...
 
-DevTools listening on ws://127.0.0.1:60920/devtools/browser/d12cd47e-1012-4b88-8f81-6e2a911d3849
+DevTools listening on ws://127.0.0.1:57683/devtools/browser/e811ab39-14c9-41ca-aa73-d70c297c0c3e
 Driver setup complete!
 
 Checking https://ir.cogrx.com/press-releases/ for links.
@@ -33,7 +33,7 @@ Saved results to alz_articles.csv .
 Setting up Selenium driver for https://gemvax.com/bbs/board.php?bo_table=releases_en ....
 Installing ChromeDriver...
 
-DevTools listening on ws://127.0.0.1:62393/devtools/browser/6753d82a-eb14-43d3-b4f3-689df4642727
+DevTools listening on ws://127.0.0.1:54796/devtools/browser/b48db1fe-d38e-4099-874c-7b2d467c24ef
 Driver setup complete!
 
 Checking https://gemvax.com/bbs/board.php?bo_table=releases_en for links.
@@ -51,8 +51,70 @@ Saving sites metadata to a .csv file...
 Saved results to alz_articles.csv .
 
 -------------------------------------------------------------------------------------------------------------
-27 new article links found across all sponsor sites.
+Setting up Selenium driver for https://us.gsk.com/en-us/media/press-releases/ ....
+Installing ChromeDriver...
+
+DevTools listening on ws://127.0.0.1:58756/devtools/browser/d7157dcc-2997-4e0f-97ab-e8503a2246d9
+Driver setup complete!
+
+Checking https://us.gsk.com/en-us/media/press-releases/ for links.
+Skipping numerical page navigation and going straight to button navigation...
+Trying button navigation for https://us.gsk.com/en-us/media/press-releases/ ...
+Searching home page...
+Found 20 links overall on https://us.gsk.com/en-us/media/press-releases/ when using Selenium.
+Number of new links found: 20
+
+Checking for a button on: https://us.gsk.com/en-us/media/press-releases/
+Button found...
+Found 20 links overall on https://us.gsk.com/en-us/media/press-releases/?p=2&ps=20 when using Selenium.
+Number of new links found: 20
+
+Checking for a button on: https://us.gsk.com/en-us/media/press-releases/?p=2&ps=20
+Button found...
+Stopping since max amount of button presses has been reached for testing purposes.
+
+Total number of links found on https://us.gsk.com/en-us/media/press-releases/ : 40
+Attempting to save HTMLS for all links found on glaxosmithkline ...
+Accepted cookies.
+Searching site HTMLs for keyword(s)...
+Total number of Alzheimer's related links on this site: 0
+Extracting metadata from HTMLs that had the desired keyword(s)...
+Saving sites metadata to a .csv file...
+
+-------------------------------------------------------------------------------------------------------------
+Setting up Selenium driver for https://neurim.com/news/ ....
+Installing ChromeDriver...
+
+DevTools listening on ws://127.0.0.1:59849/devtools/browser/4735700c-b307-4a54-a1e2-9cefa9c752ba
+Driver setup complete!
+
+Checking https://neurim.com/news/ for links.
+Skipping numerical page navigation and going straight to button navigation...
+Trying button navigation for https://neurim.com/news/ ...
+Searching home page...
+Found 9 links overall on https://neurim.com/news/ when using Selenium.
+Number of new links found: 9
+
+Checking for a button on: https://neurim.com/news/
+Button found...
+Found 12 links overall on https://neurim.com/news/ when using Selenium.
+Number of new links found: 3
+
+Checking for a button on: https://neurim.com/news/
+Button found...
+Stopping since max amount of button presses has been reached for testing purposes.
+
+Total number of links found on https://neurim.com/news/ : 12
+Attempting to save HTMLS for all links found on neurim_pharma ...
+Accepted cookies.
+Searching site HTMLs for keyword(s)...
+Total number of Alzheimer's related links on this site: 0
+Extracting metadata from HTMLs that had the desired keyword(s)...
+Saving sites metadata to a .csv file...
+
+-------------------------------------------------------------------------------------------------------------
+79 new article links found across all sponsor sites.
 25 new alzheimer links found across all sponsor sites.
 
 ---------------------------------------------------------------------------------------------------------------
-
+PS C:\Users\letsc\OneDrive\Documents\UNLV\DA790> 
