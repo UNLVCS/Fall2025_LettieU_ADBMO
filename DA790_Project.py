@@ -220,8 +220,8 @@ def get_links_bs(url, container=None):
         for c in containers:
             for a in c.find_all("a", href=True):
                 href = a["href"]  
-                # only keep full URLs that start with "http"
-                if href.startswith("http"): 
+                # only keep full URLs that start with "http" and do not end in ".pdf"
+                if href.startswith("http") and not href.lower().endswith(".pdf"): 
                     # skip pagination links to avoid infinite loops 
                     if "page=" in href or "/page/" in href: 
                         continue
@@ -264,8 +264,8 @@ def get_links_sel(url, driver, reload=True, container=None):
         link_elements = c.find_elements(By.TAG_NAME, "a")
         for element in link_elements:
             href = element.get_attribute("href")
-            # only keep full URLs that start with "http"
-            if href and href.startswith("http"):
+            # only keep full URLs that start with "http" and do not end with ".pdf"
+            if href and href.startswith("http") and not href.lower().endswith(".pdf"):
                 # skip pagination links
                 if "page=" in href or "/page/" in href: # do not want to add pagination pages to our list of links
                     continue
@@ -488,10 +488,10 @@ def get_all_pages(site_name, site_info, driver):
                     # REMOVE WHEN ACTUALLY EVALUATING.
                     -------------------------------------------------------------------------------------
                     '''
-                    button_count += 1
-                    if button_count > 1:
-                        print("Stopping since max amount of button presses has been reached for testing purposes.")
-                        break
+                    #button_count += 1
+                    #if button_count > 1:
+                        #print("Stopping since max amount of button presses has been reached for testing purposes.")
+                        #break
 
                 except TimeoutException:
                     print("No more Next/Load More buttons found. Stopping button navigation.")
@@ -807,6 +807,12 @@ def add_pdf_detail(driver, details, site_name=None, base_folder="saved_sites", c
 # ------------------------------------------------------------------------------------------------
 #                                 FUNCTIONS: SITE DETAIL PULLING FUNCTIONS
 # ------------------------------------------------------------------------------------------------
+# * parameters: 
+#   - driver: selenium webdriver
+#   - html_path: communicates where html is stored, each html w/ keyword is searched through for metadata.
+#   - url: the link associated with the html_path. 
+#   - cookie_xpath: optional xpath for a cookie consent button
+# * return: a dictionary of cleaned metadata fields
 
 '''
 * function_identifier: get_acadia_pharm_inc_details
@@ -1282,6 +1288,137 @@ def get_gemvax_kael_details(driver, html_path, url, cookie_button=None):
 
     return details
 
+'''
+* function_identifier: get_glaxosmithkline_details
+* parameters: this is designed to scrape the details from articles on https://us.gsk.com/en-us/media/press-releases/ that were found to have the keyword "alzheim."
+* notes: this site has no authors
+'''
+def get_glaxosmithkline_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
+
+    try:
+        # Open the saved HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # grabbing publisher
+        details["PUBLISHER"] = "GlaxoSmithKline"
+
+        # grabbing title
+        try:
+            title_element = soup.find("span", class_="bo_v_tit")
+            if title_element:
+                details["TITLE"] = title_element.get_text(strip=True)
+            else:
+                details["TITLE"] = "N/A"
+        except Exception as e:
+            details["TITLE"] = "N/A"
+        
+        # grabbing publish date
+        try:
+            date_element = soup.find("strong", class_="if_date")
+            if date_element: # continues if date_element is not empty
+                details["PUBLISH DATE"] = date_element.get_text(strip=True)
+            else:
+                details["PUBLISH DATE"] = "N/A"
+        except Exception as e:
+            details["PUBLISH DATE"] = "N/A"
+
+        # grabbing author(s) 
+        details["AUTHOR(S)"] = "N/A"
+
+        # grabbing body
+        try:
+            body_container = soup.find("div", class_="main-container rte child-component")
+
+            if not body_container or not body_container.find("p"):
+                body_container = soup.find("div", class_="content-wrapper")
+
+            if body_container:
+                paragraphs = body_container.find_all("p")
+                all_text = []
+                for p in paragraphs:
+                    txt = p.get_text(strip=True)
+                    if txt:
+                        all_text.append(txt)
+                details["BODY"] = "\n".join(all_text) if all_text else "N/A"
+            else:
+                details["BODY"] = "N/A"
+        except Exception as e:
+            details["BODY"] = "N/A"
+
+    except Exception as e:
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
+    
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, site_name = "glaxosmithkline", cookie_xpath=cookie_button)
+
+    return details
+
+
+'''
+* function_identifier: get_neurimph_details
+* parameters: this is designed to scrape the details from articles on https://neurim.com/news/ that were found to have the keyword "alzheim."
+* notes: this site has no authors
+'''
+def get_neurimph_details(driver, html_path, url, cookie_button=None):
+    details = {"PUBLISHER": "", "TITLE": "", "URL": url, "PUBLISH DATE": "", "AUTHOR(S)": "", "HTML PATH": html_path, "PDF PATH": "", "BODY": ""}
+
+    try:
+        # Open the saved HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # grabbing publisher
+        details["PUBLISHER"] = "Neurim Pharmaceutical"
+
+        # grabbing title
+        try:
+            title_element = soup.find("h2")
+            if title_element:
+                details["TITLE"] = title_element.get_text(strip=True)
+            else:
+                details["TITLE"] = "N/A"
+        except Exception as e:
+            details["TITLE"] = "N/A"
+
+        # grabbing publish date
+        try:
+            date_element = soup.find("div", class_="card-date date")
+            if date_element: 
+                details["PUBLISH DATE"] = date_element.get_text(strip=True)    
+        except Exception as e:
+            details["PUBLISH DATE"] = "N/A"
+
+        # grabbing author(s)
+        details["AUTHOR(S)"] = "N/A"
+
+        # grabbing body
+        try: 
+            body_container = soup.select("div.blog-detail-post")
+            if body_container:
+                all_text = []
+                for block in body_container: # keeping body paragraph text
+                    paragraphs = block.find_all("p")
+                    for p in paragraphs:
+                        txt = p.get_text(strip=True)
+                        if txt:
+                            all_text.append(txt)
+                details["BODY"] = "\n".join(all_text)
+        except Exception as e:
+            details["BODY"] = "N/A"
+
+
+    except Exception as e:
+        print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
+    
+    # storing pdf version of site
+    details = add_pdf_detail(driver, details, site_name = "neurim_pharma", cookie_xpath=cookie_button)
+
+    return details
+
 
 # ==========================================================================================
 #                                 MAIN FUNCTION
@@ -1344,22 +1481,42 @@ def main():
             #},
         # working 
         # could possibly use numeric page navigation. Just need to click next once, then flip thorugh pages numerically
-        "cognition_ther": { # Cognition Therapeutics
-            "url": "https://ir.cogrx.com/press-releases/",
-            "article_container": {"tag": "div", "class": "lsc-sf-container"},
-            "nav_button": "//a[@rel='next']",
-            "cookie_button": None,
+        #"cognition_ther": { # Cognition Therapeutics
+            #"url": "https://ir.cogrx.com/press-releases/",
+            #"article_container": {"tag": "div", "class": "lsc-sf-container"},
+            #"nav_button": "//a[@rel='next']",
+            #"cookie_button": None,
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_cognit_ther_details
+            #},
+        # working, links are only on a home page, no pagination needed.
+        #"gemvax_kael": { # GemVax & Kael
+            #"url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
+            #"article_container": {"tag": "div", "class": "bo_list"},
+            #"nav_button": None,
+            #"cookie_button": None,
+            #"bs_pagenav_flag": False,
+            #"detail_getter": get_gemvax_kael_details
+        #},
+        # working when pulling HTMLs, metdata was never extracted because no links had the designated keyword(s)
+        #"glaxosmithkline": { # GlaxoSmithKline
+            #"url": "https://us.gsk.com/en-us/media/press-releases/",
+            #"article_container": {"tag": "ul", "class": "simple-listing"},
+            #"nav_button": "//a[text()='next']",
+            #"cookie_button": "//button[@id='preferences_prompt_submit']",
+            #"bs_pagenav_flag": False,
+            #"html_sel_save": True,
+            #"detail_getter": get_glaxosmithkline_details
+        #},
+        # not working yet, just like gemvax all article links are only on home page.
+        "neurim_pharma": { # Neurim Pharmaceuticals
+            "url": "https://neurim.com/news/",
+            "article_container": {"tag": "div", "class": "row"},
+            "nav_button": "//a[@id='more_posts']",
+            "cookie_button": "//a[@class='cc-btn cc-allow button']",
             "bs_pagenav_flag": False,
-            "detail_getter": get_cognit_ther_details
-            },
-        # not working yet, links are only on a home page, no pagination needed.
-        "gemvax_kael": { # GemVax & Kael
-            "url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
-            "article_container": {"tag": "div", "class": "bo_list"},
-            "nav_button": None,
-            "cookie_button": None,
-            "bs_pagenav_flag": False,
-            "detail_getter": get_gemvax_kael_details
+            "html_sel_save": True,
+            "detail_getter" : "get_neurimph_details"
         }
     }
     
