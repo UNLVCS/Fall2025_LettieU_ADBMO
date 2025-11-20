@@ -8,7 +8,6 @@ require it.
 * Output: A csv file of the metadata collected from alzheimer related articles.
 ''' 
 
-
 # ==========================================================================================
 #                                IMPORTS AND INSTALL COMMANDS
 # ==========================================================================================
@@ -24,6 +23,7 @@ import time
 import requests
 import re
 import os
+import csv
 # was picking up external links like https://support.microsoft.com/ added library so can code function that pulls internal links only.
 from urllib.parse import urlparse
 # helps to create unique values for file names or etc.
@@ -278,6 +278,64 @@ def get_links_sel(url, driver, reload=True, container=None):
 
 
 # ==========================================================================================
+#            FUNCTIONS : LOGGING CHECKED LINKS AND LOADING THE FILE
+# ==========================================================================================
+'''
+* function_identifier: log_checked_link
+* summary: logs each link that's HTML version has been scanned for keyword(s) into checked_links.csv, preventing duplicate links.
+* parameters: 
+    - link: the URL that was scanned for Alzheimer related keywords.
+    - base_folder: folder to store CSV (default: saved_sites)
+    - filename: CSV filename that is storing checked links(deffault: checked_links) 
+'''
+def log_checked_link(link, base_folder="saved_sites", filename="checked_links.csv"):
+    # making sure file exists
+    filepath = os.path.join(base_folder, filename)
+    try: 
+        loggedlinks_dir = os.path.dirname(filepath)
+        if loggedlinks_dir != "":
+            os.makedirs(loggedlinks_dir, exist_ok=True)
+    except Exception as e:
+        print("Failed to create directory for checked_links.csv")
+        return
+        
+    # load existing links to avoid duplicates
+    existing_links = load_checked_links(base_folder, filename)
+
+    # append new link if it is not a duplicate
+    if link not in existing_links:
+        try:
+            with open(filepath, "a", newline="", encoding="utf-8") as f:
+               writer = csv.writer(f)
+               writer.writerow([link])
+        except Exception as e:
+            print("Failed to write checked_links.csv")
+
+
+'''
+* function_identifier: load_checked_links
+* summary: loads the csv file that has all previously checked links stored. This is in it's own seperate function because 
+    it is needed for the log_checked_links function and for link comparison to prevent code from repetively checking the same links on a site.
+* parameters: 
+    - base_folder: folderr to store CSV (default: saved_sites)
+    - filename: CSV filename that is storing checked links(deffault: checked_links)
+'''
+def load_checked_links(base_folder="saved_sites", filename="checked_links.csv"):
+    filepath = os.path.join(base_folder, filename)
+    checked_links = set()
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r", newline="", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if row:
+                        checked_links.add(row[0])
+        except Exception as e:
+            print("Failed to read checked_links.csv")
+    return checked_links
+
+
+# ==========================================================================================
 #                          FUNCTIONS : PAGE LOOPING AND GENERIC LINK COLLECTOR
 # ==========================================================================================
 '''
@@ -351,7 +409,8 @@ def get_all_pages(site_name, site_info, driver):
     base_url = site_info["url"]
     nav_button = site_info.get("nav_button") # for selenium based button navigation
     container = site_info.get("article_container") # container for articles
-    
+    checked_links = load_checked_links() # loading previously logged links
+   
     # determines if numeric pagination using bs is applicable.
     try:
         bs_needed = site_info.get("bs_pagenav_flag")
@@ -394,7 +453,7 @@ def get_all_pages(site_name, site_info, driver):
                 page_links_set = set(page_links)
                 
                 # comparison to see if new_links have been found
-                new_links = page_links_set - all_links 
+                new_links = page_links_set - all_links - checked_links 
                 
                 if not new_links: 
                     print("No new links found on page", page)
@@ -442,7 +501,7 @@ def get_all_pages(site_name, site_info, driver):
                     page_links = filter_internal_links(page_links, base_url)
                     # only keep new links
                     page_links_set = set(page_links)
-                    new_links = page_links_set - all_links 
+                    new_links = page_links_set - all_links - checked_links
 
                     if new_links: 
                         all_links.update(new_links) # add the new links to all_links 
@@ -488,10 +547,10 @@ def get_all_pages(site_name, site_info, driver):
                     # REMOVE WHEN ACTUALLY EVALUATING.
                     -------------------------------------------------------------------------------------
                     '''
-                    #button_count += 1
-                    #if button_count > 1:
-                        #print("Stopping since max amount of button presses has been reached for testing purposes.")
-                        #break
+                    button_count += 1
+                    if button_count > 1:
+                        print("Stopping since max amount of button presses has been reached for testing purposes.")
+                        break
 
                 except TimeoutException:
                     print("No more Next/Load More buttons found. Stopping button navigation.")
@@ -502,12 +561,14 @@ def get_all_pages(site_name, site_info, driver):
         except Exception as e:
             print("Button navigation failed or Site has no buttons to be pressed.")
     
+    # for if a site has a home page only and doesn't need pagination
     if not all_links:
         print("Pagination is not needed for this site. Scraping links off home page...")
         try:
             home_links = get_all_links(base_url, driver, container=container)
             home_links = filter_internal_links(home_links, base_url)
-            all_links.update(home_links)
+            new_links = set(home_links) - checked_links
+            all_links.update(new_links)
             print("Found", len(home_links), "links on home page.")
         except Exception as e:
             print("Failed to get links from home page as fallback:", e)
@@ -621,7 +682,6 @@ def save_html(driver, url, site_folder, file_number, cookie_button=None, url_map
 '''
 def find_alz_articles(site_folder, url_map): 
     alz_html_url = {}
-    
     if not os.path.exists(site_folder):
         print("Site folder does not exist:", site_folder)
         return {}
@@ -633,12 +693,17 @@ def find_alz_articles(site_folder, url_map):
 
         file_number = int(html_filename.replace(".html", ""))
         html_path = os.path.join(site_folder, html_filename)
+        url = url_map.get(file_number, None)
 
         try:
             # read HTML file and extract text
             with open(html_path, "r", encoding="utf-8") as f:
                 soup = BeautifulSoup(f, "html.parser")
             page_text = soup.get_text().lower()
+
+            # logging link after text freom HTML is successfully extracted.
+            if url:
+                log_checked_link(url)
 
             # keep file if keyword(s) found; otherwise delete
             if "alzheim" in page_text:
@@ -652,6 +717,8 @@ def find_alz_articles(site_folder, url_map):
             print("Error occured when searching HTML for keyword:", html_path)
             # try to remove file and url_map entry if an error occured when searching html
             try:
+                if url:
+                    log_checked_link(url)
                 if os.path.exists(html_path):
                     os.remove(html_path)
                 if file_number in url_map:
@@ -807,7 +874,7 @@ def add_pdf_detail(driver, details, site_name=None, base_folder="saved_sites", c
 # ------------------------------------------------------------------------------------------------
 #                                 FUNCTIONS: SITE DETAIL PULLING FUNCTIONS
 # ------------------------------------------------------------------------------------------------
-# * parameters: 
+# * parameters for all: 
 #   - driver: selenium webdriver
 #   - html_path: communicates where html is stored, each html w/ keyword is searched through for metadata.
 #   - url: the link associated with the html_path. 
@@ -1489,16 +1556,16 @@ def main():
             #"bs_pagenav_flag": False,
             #"detail_getter": get_cognit_ther_details
             #},
-        # working, links are only on a home page, no pagination needed.
-        #"gemvax_kael": { # GemVax & Kael
-            #"url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
-            #"article_container": {"tag": "div", "class": "bo_list"},
-            #"nav_button": None,
-            #"cookie_button": None,
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_gemvax_kael_details
-        #},
-        # working when pulling HTMLs, metdata was never extracted because no links had the designated keyword(s)
+        # working, links are only on a home page, no pagination needed. That is why nav_button is None and bs_page_nav is false to skip pagination.
+        "gemvax_kael": { # GemVax & Kael
+            "url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
+            "article_container": {"tag": "div", "class": "bo_list"},
+            "nav_button": None,
+            "cookie_button": None,
+            "bs_pagenav_flag": False,
+            "detail_getter": get_gemvax_kael_details
+        }
+        # working when pulling HTMLs, metdata exxtraction never tested because no links had the designated keyword(s)
         #"glaxosmithkline": { # GlaxoSmithKline
             #"url": "https://us.gsk.com/en-us/media/press-releases/",
             #"article_container": {"tag": "ul", "class": "simple-listing"},
@@ -1508,16 +1575,16 @@ def main():
             #"html_sel_save": True,
             #"detail_getter": get_glaxosmithkline_details
         #},
-        # not working yet, just like gemvax all article links are only on home page.
-        "neurim_pharma": { # Neurim Pharmaceuticals
-            "url": "https://neurim.com/news/",
-            "article_container": {"tag": "div", "class": "row"},
-            "nav_button": "//a[@id='more_posts']",
-            "cookie_button": "//a[@class='cc-btn cc-allow button']",
-            "bs_pagenav_flag": False,
-            "html_sel_save": True,
-            "detail_getter" : "get_neurimph_details"
-        }
+        # working when pulling HTMLs, metdata exxtraction never tested because no links had the designated keyword(s)
+        #"neurim_pharma": { # Neurim Pharmaceuticals
+            #"url": "https://neurim.com/news/",
+            #"article_container": {"tag": "div", "class": "row"},
+            #"nav_button": "//a[@id='more_posts']",
+            #"cookie_button": "//a[@class='cc-btn cc-allow button']",
+            #"bs_pagenav_flag": False,
+            #"html_sel_save": True,
+            #"detail_getter" : "get_neurimph_details"
+        #}
     }
     
     # looping through each site in site_details
@@ -1593,3 +1660,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
