@@ -145,10 +145,10 @@
 <hr>
 
 <details>
-  <summary><strong>What is <code>requirements.txt</code>?</strong></summary>
+  <summary><strong>What are the required packages for this program?</strong></summary>
   <br>
 
-  <p>This file lists all required Python packages:</p>
+  <p>Required packages:</p>
   <ul>
     <li>selenium</li>
     <li>webdriver-manager</li>
