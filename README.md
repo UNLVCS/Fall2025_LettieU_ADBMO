@@ -151,7 +151,7 @@
     <li>selenium</li>
     <li>webdriver-manager</li>
     <li>beautifulsoup4</li>
-    <li>Pillow</li>
+    <li>pillow</li>
     <li>pandas</li>
     <li>requests</li>
   </ul>
