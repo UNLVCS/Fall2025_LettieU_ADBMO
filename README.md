@@ -147,8 +147,6 @@
 <details>
   <summary><strong>What are the required packages for this program?</strong></summary>
   <br>
-
-  <p>Required packages:</p>
   <ul>
     <li>selenium</li>
     <li>webdriver-manager</li>
