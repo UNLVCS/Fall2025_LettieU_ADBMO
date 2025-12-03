@@ -112,7 +112,7 @@
   <summary><strong>What is <code>utils.py</code>?</strong></summary>
   <br>
 
-  <p><code>utils.py</code> contains helper functions for HTML saving, keyword detection, generating PDFs, logging links, and handling cookie popups.</p>
+  <p><code>utils.py</code> contains helper functions for HTML saving & renaming, keyword detection, generating PDFs, logging links, and handling cookie popups.</p>
 
   <p><strong>Logging utilities:</strong></p>
   <ul>
