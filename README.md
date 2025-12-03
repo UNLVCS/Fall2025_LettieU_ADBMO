@@ -81,7 +81,7 @@
 
   <p><strong>Filtering:</strong></p>
   <ul>
-    <li><code>filter_internal_links()</code> filters out links with a different domain, so that only links from the same domain are kept.</li>
+    <li><code>filter_internal_links()</code> filters out links with a different domain, so that only links from the same domain are kept. Links with a different domain are stored in the external_links.csv file.</li>
   </ul>
 </details>
 
@@ -119,6 +119,10 @@
     <li><code>log_checked_link()</code> ensures the <code>checked_links.csv</code> file exists, loads already logged links, and appends a new link row if the link hasn't been logged yet.</li> 
     <li><code>load_checked_links()</code> reads <code>checked_links.csv</code> and returns a set of all previously checked URLs. Used to avoid rechecking the same article links over and over.</li>
   </ul>
+
+  <p><strong>HTML renaming:</strong></p>
+  <ul>
+    <li><code>rename_html_to_title()</code> renames the HTML and HTML path using the ["CLEAN TITLE"] formed in add_pdf_detail, to prevent overwriting HTMLs in the site folder.</li>
 
   <p><strong>HTML saving & keyword detection:</strong></p>
   <ul>
