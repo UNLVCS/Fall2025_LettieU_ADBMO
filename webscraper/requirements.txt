@@ -1,7 +1,0 @@
-# list of packages to install
-selenium
-webdriver-manager
-beautifulsoup4
-Pillow
-pandas
-requests
