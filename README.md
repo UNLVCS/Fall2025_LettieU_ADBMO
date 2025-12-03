@@ -123,7 +123,8 @@
   <p><strong>HTML renaming:</strong></p>
   <ul>
     <li><code>rename_html_to_title()</code> renames the HTML and HTML path using the ["CLEAN TITLE"] formed in add_pdf_detail, to prevent overwriting HTMLs in the site folder.</li>
-
+  </ul>
+  
   <p><strong>HTML saving & keyword detection:</strong></p>
   <ul>
     <li><code>save_html()</code> saves HTML of link via BS or Selenium into the sites folder, scrolls page, clicks cookies.</li>
