@@ -35,14 +35,14 @@
   <p><strong>Functions defined in <code>detail_getters.py</code>:</strong></p>
   <ul>
     <li><code>get_acadia_pharm_inc_details()</code></li> extracts ACADIA pharmaceuticals metadata from saved HTMLs and generates a PDF of each site.
-    <li><code>get_aliada_details()</code></li> extracts Aliada Therapuetics metadata from saved HTMLs and generates a PDF.
-    <li><code>get_adel_details()</code></li> extracts ADEL (Alzheimer's Disease Expert Lab) metadata from saved HTMLs and generates a PDF.
-    <li><code>get_alzheon_details()</code></li> extracts Alzheon Inc. metadata from saved HTMLs and generates a PDF.
-    <li><code>get_alz_research_uk_details()</code></li> extracts Alzheimer's Research UK metadata from saved HTMLs and generates a PDF.
-    <li><code>get_cognit_ther_details()</code></li> extracts Cognition Therapeutics metadata from saved HTMLs and generates a PDF.
-    <li><code>get_gemvax_kael_details()</code></li> extracts Gemvax & Kael metadata from saved HTMLs and generates a PDF.
-    <li><code>get_glaxosmithkline_details()</code></li> extracts GlaxoSmithKline metadata from saved HTMLs and generates a PDF.
-    <li><code>get_neurimph_details()</code></li> extracts Nerim Pharmaceuticals metadata from saved HTMLs and generates a PDF.
+    <li><code>get_aliada_details()</code></li> extracts Aliada Therapuetics metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_adel_details()</code></li> extracts ADEL (Alzheimer's Disease Expert Lab) metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_alzheon_details()</code></li> extracts Alzheon Inc. metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_alz_research_uk_details()</code></li> extracts Alzheimer's Research UK metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_cognit_ther_details()</code></li> extracts Cognition Therapeutics metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_gemvax_kael_details()</code></li> extracts Gemvax & Kael metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_glaxosmithkline_details()</code></li> extracts GlaxoSmithKline metadata from saved HTMLs and generates a PDF of each site.
+    <li><code>get_neurimph_details()</code></li> extracts Nerim Pharmaceuticals metadata from saved HTMLs and generates a PDF of each site.
   </ul>
 </details>
 
