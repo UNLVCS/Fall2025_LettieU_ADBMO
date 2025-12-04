@@ -2,6 +2,8 @@
 
 import requests
 import time
+import os
+import csv
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from selenium.webdriver.common.by import By
@@ -35,8 +37,9 @@ def get_bs_container(soup, container=None):
             # Try to find the main container in the soup
             try:
                 outer = soup.find(container_tag, class_=container_class)
+                print("BeautifulSoup: searching for container.")
             except Exception as e:
-                print("Container not found.")
+                print("BeautifulSoup: container not found.")
                 return [soup]
 
             if outer:
@@ -57,7 +60,7 @@ def get_bs_container(soup, container=None):
                     return [outer]
                 
             else:
-                print("Container not found. Scraping whole page.")
+                print("BeautifulSoup: container not found, scraping whole page or trying selenium.")
                 return [soup]
 
         # if no container is provided, return the full soup     
@@ -92,8 +95,9 @@ def get_sel_container(driver, container=None):
             # attempt to find the main container using a CSS selector
             try:
                 outer = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"{container_tag}.{container_class}"))) 
+                print("Selenium: searching for container.")
             except Exception as e:
-                print("Container not found or timed out.")
+                print("Selenium: container not found or timed out.")
                 return [driver]
             
             containers = []
@@ -116,7 +120,7 @@ def get_sel_container(driver, container=None):
                 return [outer]
         
         except Exception as e:
-            print("Container not found. Using whole page.")
+            print("Selenium: container not found, scraping whole page.")
 
     # fallback: use driver itself to scrape whole page
     return [driver]
@@ -240,14 +244,16 @@ def get_all_links(url, driver, container=None):
 
 '''
 * function_identifier: filter_internal_links()
-* summary: Will filter out external links so that only internal links that belong to the same domain are returned.
+* summary: Filters a list of URLs so that only internal links are being returned and assessed for Alzheimer's related keywords.
+            External links are logged in a external_links.csv file (with no duplicates). File can be found in the saved_sites folder.
 * parameters:
     - links: list of URLs to filter
     - base_url: the base_url whose domain is used to identify internal links
-* return: a list of URLs that are internal to the base URLs domain.
+* return: a list of URLs that belonmg to the same domain as the base_url
 '''
 def filter_internal_links(links, base_url):
     internal_links = [] # list for storing internal links
+    external_links = []
 
     # Get the domain of the base URL
     parsed_base = urlparse(base_url)
@@ -261,6 +267,33 @@ def filter_internal_links(links, base_url):
         # if link domain matches the base domain, append it to internal_links list
         if link_domain == base_domain:
             internal_links.append(link)
+        else:
+            external_links.append(link)
+
+    # saving external links to a CSV
+    if external_links:
+        try:
+            folder = "saved_sites"
+            os.makedirs(folder, exist_ok=True)
+            el_csv_path = os.path.join(folder, "external_links.csv")
+
+            # checking external links (el) csv for links that have already been documented, avoiding duplicates.
+            existing_el = set()
+            if os.path.exists(el_csv_path):
+                with open(el_csv_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        existing_el.add(line.strip())
+
+            # adding only new external links to external_links.csv
+            with open(el_csv_path, "a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                for link in external_links:
+                    entry = (base_url, link)
+                    if entry not in existing_el:
+                        writer.writerow([base_url, link])
+        
+        except Exception as e:
+            print("Failed to save external links.")
 
     return internal_links
 
@@ -285,7 +318,7 @@ def get_home_page(site_name, site_info, driver, checked_links):
         home_links = filter_internal_links(home_links, base_url)
         new_links = set(home_links) - checked_links
         all_links.update(new_links)
-        print("Found", len(home_links), "links on home page,", len(new_links), "are new.")
+        print("Found", len(home_links), "internal links on home page,", len(new_links), "are new.")
         return all_links
     except Exception as e:
         print("Failed to get links from home page as fallback:", e)
@@ -351,7 +384,7 @@ def get_pages_bs(site_name, site_info, driver, checked_links):
             else:
                 all_links.update(new_links)
                 numeric_success = True
-                print("Found", len(new_links), " new links on", url)
+                print("Found", len(new_links), " new internal links on", url)
             
             page += 1
             time.sleep(3) 
@@ -403,7 +436,7 @@ def get_pages_sel(site_name, site_info, driver, checked_links):
 
                 if new_links: 
                     all_links.update(new_links) # add the new links to all_links 
-                    print("Number of new links found:", len(new_links), "\n") 
+                    print("Number of new internal links found:", len(new_links), "\n") 
                     if len(new_links) == 1: # stop if only 1 new link appears twice in a row.
                         one_link_count +=1
                         if one_link_count >= 2:
