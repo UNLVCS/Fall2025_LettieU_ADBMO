@@ -64,7 +64,7 @@ def main():
             "nav_button": "//a[contains(@class, 'df-cptfilter-load-more')]",
             "bs_pagenav_flag": False,
             "detail_getter": get_alzheon_details
-            }
+            },
         # working
         #"alz_research_uk": { # Alzheimer's Research UK 
             #"url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
@@ -113,7 +113,15 @@ def main():
             #"bs_pagenav_flag": False,
             #"html_sel_save": True,
             #"detail_getter" : "get_neurimph_details"
-        #}
+        #},
+        # no metadata to extract, sites news links redirect to other sites. All redirect links are shown in external_links.csv
+        # all links on home page
+        "immunobrain_cp": { # Immunobrain Checkpoint
+            "url": "https://immunobrain.com/thenews/",
+            "article_container": {"tag": "div", "class": "jet-listing-grid"},
+            "cookie_button": "//button[contains(@class, 'cmplz-accept')]",
+            "bs_pagenav_flag": False
+        }
     }
     
     # looping through each site in site_details
@@ -134,7 +142,7 @@ def main():
             # Get all links from site
             try:
                 links = get_all_pages(site_name, site_info, driver)
-                print("\nTotal number of new, unlogged, links found on", base_url, ":", len(links))
+                print("\nTotal number of new, unlogged, internal links found on", base_url, ":", len(links))
                 total_links += len(links)
             except Exception as e:
                 continue
@@ -161,6 +169,7 @@ def main():
             # extracting article details
             print("Extracting metadata from HTMLs that had the desired keyword(s)...")
             site_article_details = []
+            seen_titles = set() 
             for file_number, url in alz_html_url.items():
                 html_path = os.path.join(site_folder, str(file_number) + ".html")
 
@@ -168,6 +177,13 @@ def main():
                     # extracting metadata from the HTML file using the site's detail getter
                     article_data = site_info["detail_getter"](driver, html_path, url, cookie_button=site_info.get("cookie_button"))
                     if article_data and article_data.get("PDF PATH", "").endswith(".pdf"): # saving articles metdata to CSV file if metadata extraction worked.
+                        # making sure duplicate article metadata is not saved if two urls provide the same information.
+                        title = article_data.get("TITLE", "").strip()
+                        if title in seen_titles:
+                            print("Skipping duplicate title, metadata for this article already exist in alz_articles.csv under a different URL.")
+                            continue
+                        seen_titles.add(title)
+                        # removing clean title column before saving to CSV, it is not needed metadata. Already have a title column.
                         if "CLEAN TITLE" in article_data:
                             del article_data["CLEAN TITLE"]
                         site_article_details.append(article_data)
@@ -200,7 +216,7 @@ def main():
     
 
     print("\n-------------------------------------------------------------------------------------------------------------")
-    print(total_links, "new, unlogged, article links found across all sponsor sites this run.")
+    print(total_links, "new, unlogged, internal article links found across all sponsor sites this run.")
     print(total_alz_links, "alzheimer related links found this run.")
     print(total_scraped_articles, "cumulative total of scraped Alzheimer related pages (for all runs).")
     print("---------------------------------------------------------------------------------------------------------------")
