@@ -1,5 +1,3 @@
-# This python file stores functions that deal with file I/O, HTML saving, cookies handling, logging, PDF creation, and other helpers used across modules.
-
 import os
 import csv
 import time
@@ -201,7 +199,9 @@ def save_html(driver, url, site_folder, file_number, cookie_button=None, url_map
 * note: starting html saves here because this is the first time article links are opened and read. 
 '''
 def find_alz_articles(site_folder, url_map): 
+    keywords = ["alzheim"] # add keywords to this list if you wanna expand the search
     alz_html_url = {}
+
     if not os.path.exists(site_folder):
         print("Site folder does not exist:", site_folder)
         return {}
@@ -231,7 +231,7 @@ def find_alz_articles(site_folder, url_map):
                 log_checked_link(url)
 
             # keep file if keyword(s) found; otherwise delete
-            if "alzheim" in page_text:
+            if any(kw in page_text for kw in keywords):
                 alz_html_url[file_number] = url_map.get(file_number, "URL not found")
             else:
                 os.remove(html_path)
