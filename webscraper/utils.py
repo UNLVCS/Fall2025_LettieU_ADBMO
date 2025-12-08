@@ -1,3 +1,5 @@
+# This python file stores functions that deal with file I/O, HTML saving, cookies handling, logging, PDF creation, and other helpers used across modules.
+
 import os
 import csv
 import time
