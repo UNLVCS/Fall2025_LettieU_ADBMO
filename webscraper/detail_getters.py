@@ -362,7 +362,7 @@ def get_alz_research_uk_details(driver, html_path, url, cookie_button=None):
         print("Unable to grab metadata from", details["PUBLISHER"], "html file:", url)
     
     # storing pdf version of site
-    details = add_pdf_detail(driver, details, site_name = "alz_reasearch_uk", cookie_xpath=cookie_button)
+    details = add_pdf_detail(driver, details, site_name = "alz_research_uk", cookie_xpath=cookie_button)
 
     # rename HTML file and HTML file path to prevent overwriting
     details["HTML PATH"] = rename_html_to_title(html_path, details.get("CLEAN TITLE"))
@@ -644,3 +644,4 @@ def get_neurimph_details(driver, html_path, url, cookie_button=None):
     details["HTML PATH"] = rename_html_to_title(html_path, details.get("CLEAN TITLE"))
     
     return details
+
