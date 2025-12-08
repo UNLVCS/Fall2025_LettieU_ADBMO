@@ -245,7 +245,7 @@ def get_all_links(url, driver, container=None):
 '''
 * function_identifier: filter_internal_links()
 * summary: Filters a list of URLs so that only internal links are being returned and assessed for Alzheimer's related keywords.
-            External links are logged in a external_links.csv file (with no duplicates). File can be found in the saved_sites folder.
+            External base urls are logged in a external_links.csv file (with no duplicates). File can be found in the saved_sites folder.
 * parameters:
     - links: list of URLs to filter
     - base_url: the base_url whose domain is used to identify internal links
@@ -253,7 +253,7 @@ def get_all_links(url, driver, container=None):
 '''
 def filter_internal_links(links, base_url):
     internal_links = [] # list for storing internal links
-    external_links = []
+    external_links = set()
 
     # Get the domain of the base URL
     parsed_base = urlparse(base_url)
@@ -264,11 +264,14 @@ def filter_internal_links(links, base_url):
         parsed_link = urlparse(link)
         link_domain = parsed_link.netloc
 
-        # if link domain matches the base domain, append it to internal_links list
+        # if link domain matches the base domain, append it to internal_links list; else add the external links base URL to external links
         if link_domain == base_domain:
             internal_links.append(link)
         else:
-            external_links.append(link)
+            domain = link_domain.lower() # did lower so that linkedin.com and LinkedIn.com do not register as two different sites
+            if domain.startswith("www."): 
+                domain = domain[4:] # stripping 'www.' so that www.linkedin.com and linkedin.com do not register as two different sites
+            external_links.add(domain)
 
     # saving external links to a CSV
     if external_links:
@@ -288,9 +291,9 @@ def filter_internal_links(links, base_url):
             with open(el_csv_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 for link in external_links:
-                    entry = (base_url, link)
+                    entry = link
                     if entry not in existing_el:
-                        writer.writerow([base_url, link])
+                        writer.writerow([link])
         
         except Exception as e:
             print("Failed to save external links.")
@@ -479,7 +482,7 @@ def get_pages_sel(site_name, site_info, driver, checked_links):
                 -------------------------------------------------------------------------------------
                 '''
                 button_count += 1
-                if button_count > 2:
+                if button_count > 0:
                     print("Stopping since max amount of button presses has been reached for testing purposes.")
                     break
 
