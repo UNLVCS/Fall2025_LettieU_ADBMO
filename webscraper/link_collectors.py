@@ -425,7 +425,7 @@ def get_pages_sel(site_name, site_info, driver, checked_links):
         last_url = driver.current_url
         no_new_count = 0 # counts how many times no new articles were returned after a button click.
         one_link_count = 0 # counts how many repetitive times only one link has been found.
-        button_count = 0 # for testing, when I dont wanna run through a whole website. 
+        
         
         while True: # loop until there are no more new links or buttons
             try: 
@@ -474,17 +474,6 @@ def get_pages_sel(site_name, site_info, driver, checked_links):
                     break
                 
                 prev_count = len(all_links)
-
-                '''
-                -------------------------------------------------------------------------------------
-                # FOR TESTING PURPOSES ONLY, DONT WANNA GO THROUGH WHOLE SITE FOR ANALYSIS
-                # REMOVE WHEN ACTUALLY EVALUATING.
-                -------------------------------------------------------------------------------------
-                '''
-                button_count += 1
-                if button_count > 0:
-                    print("Stopping since max amount of button presses has been reached for testing purposes.")
-                    break
 
             except TimeoutException:
                 print("No more Next/Load More buttons found. Stopping button navigation.")
