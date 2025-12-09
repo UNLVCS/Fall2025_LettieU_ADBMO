@@ -29,34 +29,34 @@ def main():
     '''
 
     site_details = {
-        #working, has 641 first page links
-        #"acadia_pharm_inc": { # ACADIA Pharmaceutical Inc.
-            #"url": "https://acadia.com/en-us/media/news-releases",
-            #"article_container": {"tag": "div", "class": "results"},
-            #"nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
-            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_acadia_pharm_inc_details
-            #}, 
+        # working, has 641 first page links
+        "acadia_pharm_inc": { # ACADIA Pharmaceutical Inc.
+            "url": "https://acadia.com/en-us/media/news-releases",
+            "article_container": {"tag": "div", "class": "results"},
+            "nav_button": "//label[contains(@class, 'show-all') and text()='Show All']",
+            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            "bs_pagenav_flag": False,
+            "detail_getter": get_acadia_pharm_inc_details
+            }, 
         # working
-        #"aliada_th": { # Aliada Therapuetics
-            #"url": "https://investors.alnylam.com/press-releases",
-            #"article_container": {"tag": "div", "class": "financial-info-table"},
-            #"nav_button": "//a[contains(@rel, 'next')]",
-            #"cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_aliada_details
-            #},
+        "aliada_th": { # Aliada Therapuetics
+            "url": "https://investors.alnylam.com/press-releases",
+            "article_container": {"tag": "div", "class": "financial-info-table"},
+            "nav_button": "//a[contains(@rel, 'next')]",
+            "cookie_button": "//button[contains(@id, 'onetrust-accept-btn-handler')]",
+            "bs_pagenav_flag": False,
+            "detail_getter": get_aliada_details
+            },
         # working
-        #"adel_inc": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
-            #"url": "https://www.alzinova.com/investors/press-releases/",
-            #"article_container": {"tag": "div", "class": "mfn-content"},
-            #"nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
-            #"cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
-            #"bs_pagenav_flag": False,
-            #"html_sel_save": True,
-            #"detail_getter": get_adel_details
-            #},
+        "adel_inc": { # Alzheimer's Disease Expert Lab (ADEL), Inc.
+            "url": "https://www.alzinova.com/investors/press-releases/",
+            "article_container": {"tag": "div", "class": "mfn-content"},
+            "nav_button": "//div[contains(@class, 'mfn-pagination-link') and contains(@class, 'mfn-next')]",
+            "cookie_button": "//button[contains(@class, 'coi-banner__accept')]",
+            "bs_pagenav_flag": False,
+            "html_sel_save": True,
+            "detail_getter": get_adel_details
+            },
         # working
         "alzheon_inc": { # Alzheon Inc
             "url": "https://asceneuron.com/news-events/",
@@ -66,54 +66,54 @@ def main():
             "detail_getter": get_alzheon_details
             },
         # working
-        #"alz_research_uk": { # Alzheimer's Research UK 
-            #"url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
-            #"article_container": {"tag": "div", "class": "pp-content-posts"},
-            #"nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
-            #"cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
-            #"bs_pagenav_flag": False,
-            #"html_sel_save": True,
-            #"detail_getter": get_alz_research_uk_details
-            #},
+        "alz_research_uk": { # Alzheimer's Research UK 
+            "url": "https://www.alzheimersresearchuk.org/about-us/latest/news/",
+            "article_container": {"tag": "div", "class": "pp-content-posts"},
+            "nav_button": "//span[contains(@class, 'pp-grid-loader-text') and text()='Load More']",
+            "cookie_button": "//button[contains(@id, 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll')]",
+            "bs_pagenav_flag": False,
+            "html_sel_save": True,
+            "detail_getter": get_alz_research_uk_details
+            },
         # working 
         # could possibly use numeric page navigation. Just need to click next once, then flip thorugh pages numerically
-        #"cognition_ther": { # Cognition Therapeutics
-            #"url": "https://ir.cogrx.com/press-releases/",
-            #"article_container": {"tag": "div", "class": "lsc-sf-container"},
-            #"nav_button": "//a[@rel='next']",
-            #"cookie_button": None,
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_cognit_ther_details
-            #},
+        "cognition_ther": { # Cognition Therapeutics
+            "url": "https://ir.cogrx.com/press-releases/",
+            "article_container": {"tag": "div", "class": "lsc-sf-container"},
+            "nav_button": "//a[@rel='next']",
+            "cookie_button": None,
+            "bs_pagenav_flag": False,
+            "detail_getter": get_cognit_ther_details
+            },
         # working, links are only on a home page, no pagination needed. That is why nav_button is None and bs_page_nav is false to skip pagination.
-        #"gemvax_kael": { # GemVax & Kael
-            #"url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
-            #"article_container": {"tag": "div", "class": "bo_list"},
-            #"nav_button": None,
-            #"cookie_button": None,
-            #"bs_pagenav_flag": False,
-            #"detail_getter": get_gemvax_kael_details
-        #},
-        # working when pulling HTMLs, metdata exxtraction never tested because no links had the designated keyword(s)
-        #"glaxosmithkline": { # GlaxoSmithKline
-            #"url": "https://us.gsk.com/en-us/media/press-releases/",
-            #"article_container": {"tag": "ul", "class": "simple-listing"},
-            #"nav_button": "//a[text()='next']",
-            #"cookie_button": "//button[@id='preferences_prompt_submit']",
-            #"bs_pagenav_flag": False,
-            #"html_sel_save": True,
-            #"detail_getter": get_glaxosmithkline_details
-        #},
-        # working when pulling HTMLs, metdata exxtraction never tested because no links had the designated keyword(s)
-        #"neurim_pharma": { # Neurim Pharmaceuticals
-            #"url": "https://neurim.com/news/",
-            #"article_container": {"tag": "div", "class": "row"},
-            #"nav_button": "//a[@id='more_posts']",
-            #"cookie_button": "//a[@class='cc-btn cc-allow button']",
-            #"bs_pagenav_flag": False,
-            #"html_sel_save": True,
-            #"detail_getter" : "get_neurimph_details"
-        #},
+        "gemvax_kael": { # GemVax & Kael
+            "url": "https://gemvax.com/bbs/board.php?bo_table=releases_en",
+            "article_container": {"tag": "div", "class": "bo_list"},
+            "nav_button": None,
+            "cookie_button": None,
+            "bs_pagenav_flag": False,
+            "detail_getter": get_gemvax_kael_details
+            },
+        # working when pulling HTMLs, metdata extraction function  never tested because no links had the designated keyword(s)
+        "glaxosmithkline": { # GlaxoSmithKline
+            "url": "https://us.gsk.com/en-us/media/press-releases/",
+            "article_container": {"tag": "ul", "class": "simple-listing"},
+            "nav_button": "//a[text()='next']",
+            "cookie_button": "//button[@id='preferences_prompt_submit']",
+            "bs_pagenav_flag": False,
+            "html_sel_save": True,
+            "detail_getter": get_glaxosmithkline_details
+            },
+        # working when pulling HTMLs, metdata extraction function never tested because no links had the designated keyword(s)
+        "neurim_pharma": { # Neurim Pharmaceuticals
+            "url": "https://neurim.com/news/",
+            "article_container": {"tag": "div", "class": "row"},
+            "nav_button": "//a[@id='more_posts']",
+            "cookie_button": "//a[@class='cc-btn cc-allow button']",
+            "bs_pagenav_flag": False,
+            "html_sel_save": True,
+            "detail_getter" : "get_neurimph_details"
+            },
         # no metadata to extract, sites news links redirect to other sites. All redirect links are shown in external_links.csv
         # all links on home page
         "immunobrain_cp": { # Immunobrain Checkpoint
@@ -121,7 +121,7 @@ def main():
             "article_container": {"tag": "div", "class": "jet-listing-grid"},
             "cookie_button": "//button[contains(@class, 'cmplz-accept')]",
             "bs_pagenav_flag": False
-        }
+            }
     }
     
     # looping through each site in site_details
@@ -217,7 +217,7 @@ def main():
 
     print("\n-------------------------------------------------------------------------------------------------------------")
     print(total_links, "new, unlogged, internal article links found across all sponsor sites this run.")
-    print(total_alz_links, "alzheimer related links found this run.")
+    print(total_alz_links, "alzheimer related links found this run.") # count includes URLs with duplicate data that were filtered out
     print(total_scraped_articles, "cumulative total of scraped Alzheimer related pages (for all runs).")
     print("---------------------------------------------------------------------------------------------------------------")
 
