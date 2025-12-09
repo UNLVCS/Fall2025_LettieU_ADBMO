@@ -17,7 +17,7 @@
         <li>Calls <code>get_all_pages()</code> from <code>link_collectors.py</code> to collect article URLs.</li>
         <li>Loops through links and saves each page as an HTML file using<code>save_html()</code> from <code>utils.py</code></li>
         <li>Calls <code>find_alz_articles()</code> from <code>utils.py</code> to keep only HTMLs that contain Alzheimer's related keywords.</li>
-        <li>Calls the correct site specefic details function from <code>detail_getters.py</code> to extract article metadata and create a PDF.</li>
+        <li>Calls the correct site specefic details function from <code>detail_getters.py</code> to extract article metadata and create a PDF. Also, checks to make sure a newly scraped title is not already in <code>alz_articles.csv</code>. If it is, it will pass the link and not save the metadata associated with it.</li>
         <li>Appends all extracted article metadata into a CSV file (<code>alz_articles.csv</code>) using pandas.</li>
       </ul>
     </li>
